@@ -19,6 +19,7 @@ Planning. No code yet — the repo currently holds design notes, a target-machin
 writeonce-session-notes.md   Architectural source of truth: 8 LFS phases, 15-phase boot,
                              language-per-phase decisions
 plan/                        Phase-by-phase implementation roadmap (00-roadmap + 11 phase files)
+paper/                       LaTeX technical paper (writeonce.tex + writeonce.bib + PDF)
 scripts/
   survey-target-machine.sh   Hardware survey script run on the T450
 .agents/
@@ -27,6 +28,7 @@ scripts/
     linux/                   → ~/projects/linux/ (kernel source)
     i3More/                  → ~/projects/github/shoneyj/i3More/ (target DE)
     lfs/                     → ~/projects/github/lfs-book/lfs/ (LFS book sources)
+    systemd/                 → ~/projects/github/systemd/systemd/ (PID 1 reference)
     writeonce-all/           → ~/projects/github/shoneyj/writeonce/writeonce-all/
 ```
 
@@ -55,6 +57,7 @@ See `writeonce-session-notes.md` Topic 4 for the rationale.
 1. [`writeonce-session-notes.md`](writeonce-session-notes.md) — start here for the *why*
 2. [`plan/00-roadmap.md`](plan/00-roadmap.md) — start here for the *how*
 3. Individual `plan/phase-N-*.md` files — start here for the *what next*
+4. [`paper/writeonce.pdf`](paper/writeonce.pdf) — the long-form technical paper (10 pp.), maintained from [`paper/writeonce.tex`](paper/writeonce.tex); cites the LFS book and contemporary references. Rebuild with `cd paper && make`.
 
 ## Upstream references
 
@@ -81,6 +84,13 @@ External projects this build draws from. All are mirrored locally as read-only s
 - **Local mirror:** [`.agents/reference/i3More/`](.agents/reference/i3More/)
 - **Used by:** [`plan/phase-8-x11-gtk4.md`](plan/phase-8-x11-gtk4.md) (substrate requirements), [`plan/phase-9-i3more.md`](plan/phase-9-i3more.md) (integration).
 - **Why:** end-goal desktop environment — its dependency surface (X11, GTK4, D-Bus, PAM, PipeWire) defines the userspace stack WriteOnce must provide.
+
+### systemd
+
+- **Upstream:** [github.com/systemd/systemd](https://github.com/systemd/systemd)
+- **Local mirror:** [`.agents/reference/systemd/`](.agents/reference/systemd/) (shallow clone)
+- **Used by:** [`plan/phase-3-rust-pid1.md`](plan/phase-3-rust-pid1.md) (PID 1 contract), [`plan/phase-4-supervisor.md`](plan/phase-4-supervisor.md) (service supervisor + cgroup v2 + logind D-Bus surface).
+- **Why:** the most battle-tested PID 1 and service supervisor in the Linux world. WriteOnce is deliberately *not* using systemd, but reads it as the reference implementation for edge cases (reaping, signal handling, cgroup placement, dependency resolution, logind D-Bus). Read for understanding; do not vendor or port. Key files: `src/core/main.c` (PID 1 entry), `src/core/manager.c` (state machine), `src/core/cgroup.c`, `src/login/logind-dbus.c`.
 
 ## License
 

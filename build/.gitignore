@@ -1,0 +1,32 @@
+# build/ — what's ephemeral vs tracked.
+#
+# Tracked: *.sh, versions.env, checksums.txt, keys/*.asc, keys/README.md,
+#          README.md, .gitignore.
+# Generated: everything below.
+#
+# NOTE: inline comments on the same line as a pattern do NOT work in
+# gitignore syntax. Keep comments on their own lines.
+
+# --- Phase 0 build state (large) ---
+# sources/      downloaded tarballs + .sig files (~0.6 GB)
+# cross-tools/  $LFS/tools — host-resident cross-toolchain (~1.5 GB)
+# sysroot/      $LFS — target rootfs being built (~3.5 GB after Ch.6)
+# artifacts/    bzImage, initramfs, ESP image, ISO (Phase 2+)
+# work/         per-package extracted source trees + build dirs (~7 GB)
+# logs/         per-step build logs + .done-* sentinels
+# gnupg/        project-local GPG keyring (imported pubkeys + trustdb)
+sources/
+cross-tools/
+sysroot/
+artifacts/
+work/
+logs/
+gnupg/
+
+# --- Ephemeral run state ---
+# *.next-lock   SHA-256 hashes awaiting review before commit to checksums.txt
+# *.part        partial downloads from wget
+# *.log         build/fetch.log etc. at any depth
+*.next-lock
+*.part
+*.log

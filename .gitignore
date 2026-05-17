@@ -1,1 +1,52 @@
+# WriteOnce OS — repo-wide gitignore.
+# Subdirectory rules: build/.gitignore, paper/.gitignore.
+#
+# NOTE: inline comments on the same line as a pattern do NOT work in
+# gitignore syntax. Keep comments on their own lines.
+
+# --- Local-only project areas ---
+# .agents/ holds per-machine context: read-only symlinks to reference repos
+# (whose paths are local-absolute) and the captured hardware survey
+# target-machine.md (which contains identifying serials/MACs not safe to
+# publish). Kept local; regenerated on demand.
 .agents/
+
+# paper/ holds the LaTeX research paper and compiled PDF. Kept local for now
+# (use `cd paper && make` to rebuild). Track when ready for public release.
+paper/
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.iml
+
+# --- OS debris ---
+.DS_Store
+Thumbs.db
+
+# --- Backups / merge leftovers ---
+*.bak
+*.orig
+*.rej
+*.tmp
+
+# --- Rust build output (Phase 3+ Rust crates) ---
+# target/ at any depth. Cargo.lock left tracked by default — appropriate
+# for the binary crates this project produces.
+target/
+
+# --- Phase-snapshot tarballs (Track S in plan/00-roadmap.md) ---
+snapshots/
+
+# --- Local env / secrets ---
+.env
+.envrc
+*.local
+
+# --- Python (if tooling grows into it) ---
+__pycache__/
+*.pyc
+*.pyo
