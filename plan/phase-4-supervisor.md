@@ -58,6 +58,15 @@ A working supervisor that starts and stops services in dependency order with cgr
 - s6 / dinit / finit source as reference architectures (browse externally; do not vendor).
 - `zbus` crate docs for the D-Bus implementation.
 
+### Design companion docs
+
+These four learning docs flesh out the Phase 4 sketch into implementable detail:
+
+- [`../docs/learning/systemd-feature-survey.md`](../docs/learning/systemd-feature-survey.md) — what the WriteOnce supervisor mirrors from systemd (and what it doesn't).
+- [`../docs/learning/phase-4-cgroup-isolation.md`](../docs/learning/phase-4-cgroup-isolation.md) — `clone3(CLONE_INTO_CGROUP)` placement design.
+- [`../docs/learning/phase-4-service-toml-schema.md`](../docs/learning/phase-4-service-toml-schema.md) — unit-file schema + `WantedBy` reverse-dependency semantics.
+- [`../docs/learning/phase-4-dependency-graph.md`](../docs/learning/phase-4-dependency-graph.md) — transaction build, edge types, cycle handling.
+
 ## Risks
 
 - D-Bus surface is the slipperiest dependency — i3More may use more of logind than `Inhibit`. Mitigation: re-run the i3More OS-dependency survey at the start of Phase 9 to catch additions; iterate the shim.

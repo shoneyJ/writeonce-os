@@ -49,7 +49,15 @@ A Rust binary that **is PID 1** on the T450, reaps children correctly, and execs
 
 - `../.agents/reference/linux/init/main.c::kernel_init` — what the kernel does just before PID 1 execs.
 - `../.agents/reference/linux/kernel/exit.c::do_wait` — semantics of `waitpid`.
-- Rust crates: `nix` for syscalls, `libc` for raw constants, `signal-hook` for signalfd.
+- [`../docs/learning/systemd-feature-survey.md`](../docs/learning/systemd-feature-survey.md) — the systemd surface this Phase mirrors (and what it deliberately doesn't).
+- Rust crates: `libc` for syscalls + raw constants (deliberate choice for the PID 1 prototype; `nix` and `signal-hook` deferred to higher-level crates).
+
+## Implementation prototype
+
+The first runnable artifact of this phase is a `writeonce-pid1` binary
+in a Cargo workspace at the repo root. Layout, syscall surface, and
+verification commands are captured in the Round-2 design plan; the
+crate lives at `crates/writeonce-pid1/`.
 
 ## Risks
 
