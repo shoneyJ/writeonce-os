@@ -1,9 +1,14 @@
-# Round 2d — the writeonce-logind D-Bus shim
+# Rounds 2d–2e — the writeonce-logind D-Bus shim
 
 > Companion to [`../../crates/writeonce-logind/`](../../crates/writeonce-logind/).
 > Explains why i3More needs a logind, what surface the shim implements,
 > what's deliberately stubbed, and how `writeonce-login` will integrate
 > with it in Phase 9.
+>
+> Round 2d landed the initial skeleton (interfaces + service registration);
+> Round 2e closed the three biggest stubs (inhibitor lifecycle tracking,
+> VT switching on Session.Activate, sender-PID resolution for
+> GetCurrentSession). See "Round 2e changes" below.
 
 ## Why this exists
 
@@ -39,12 +44,12 @@ applets need — nothing more.
 | `ReleaseSession(id)` | ✓ real | Removes the session object + state entry. Emits `SessionRemoved`. |
 | `GetSession(id)` | ✓ real | Returns the object path. |
 | `GetSessionByPID(pid)` | ✓ real | Walks `/proc/<pid>/status:PPid` up to 32 hops looking for a known leader_pid. |
-| `GetCurrentSession()` | partial | Returns the single session if exactly one exists. Multi-session case needs DBus sender→PID lookup which we punt on for v1. |
+| `GetCurrentSession()` | ✓ real (Round 2e) | Asks the bus daemon for the sender's PID via `org.freedesktop.DBus.GetConnectionUnixProcessID`, then walks PPid chain in /proc/<pid>/status. |
 | `ListSessions()` | ✓ real | Returns `[(id, uid, name, seat, path), …]`. |
 | `ListSeats()` | ✓ real | Always `[("seat0", /org/freedesktop/login1/seat/seat0)]`. |
 | `ListUsers()` | ✓ real | Unique-by-uid of all session owners. |
 | `ListInhibitors()` | ✓ real | Returns current inhibitor records. |
-| `Inhibit(what, who, why, mode)` | partial | Returns a pipe read-end fd. Caller holding fd open = inhibitor active. We **do not yet** track inhibitor lifecycle (writer-end close detection) — honour-system only. |
+| `Inhibit(what, who, why, mode)` | ✓ real (Round 2e) | Returns a pipe write-end fd. Daemon keeps the read-end and watches it via epoll on a dedicated thread; EPOLLHUP fires when caller closes their fd → inhibitor auto-removed. Caller uid+pid resolved via D-Bus sender lookup. |
 | `LockSession(id)` | ✓ real | Emits `Session.Lock` signal on the session's object path. |
 | `UnlockSession(id)` | ✓ real | Emits `Session.Unlock`. |
 | `CanReboot()` / `CanPowerOff()` | ✓ stub | Returns "yes". |
@@ -62,8 +67,9 @@ applets need — nothing more.
 
 ### `org.freedesktop.login1.Session` (one instance per session)
 
-**Methods**: `Lock`, `Unlock`, `Activate` (stub — no VT switch yet),
-`Terminate` (sends SIGTERM to the leader pid), `SetIdleHint`.
+**Methods**: `Lock`, `Unlock`, `Activate` (✓ Round 2e — VT_ACTIVATE
+ioctl on /dev/tty0), `Terminate` (sends SIGTERM to the leader pid),
+`SetIdleHint`.
 
 **Properties**: `Id`, `User`, `Name`, `Timestamp`, `TimestampMonotonic`,
 `VTNr`, `Seat`, `Display`, `Remote`, `Service`, `Type`, `Class`,
@@ -82,16 +88,17 @@ No methods. Most callers just read `ActiveSession` after a VT switch.
 
 | Capability | Real impl | Stub | Future round |
 | --- | --- | --- | --- |
-| Session create / destroy + signals | ✓ | | |
-| Lock / Unlock signals | ✓ | | |
-| Inhibitor FD allocation | ✓ | | |
-| Inhibitor lifecycle (close-detect) | | ✗ honour-system | Round 2e — epoll on the write-end |
-| Reboot / PowerOff via PID 1 | ✓ | | |
+| Session create / destroy + signals | ✓ Round 2d | | |
+| Lock / Unlock signals | ✓ Round 2d | | |
+| Inhibitor FD allocation | ✓ Round 2d | | |
+| **Inhibitor lifecycle (close-detect)** | **✓ Round 2e** | | Watcher thread + epoll on pipe read-ends |
+| Reboot / PowerOff via PID 1 | ✓ Round 2d | | |
 | Suspend / Hibernate | | ✗ returns "no" | Round 2f — wire kernel s2idle |
-| GetCurrentSession multi-session | | ✗ punts | Round 2e — DBus sender→PID lookup |
-| VT-switch on Session.Activate | | ✗ stub | Round 2e — VT_ACTIVATE ioctl |
+| **GetCurrentSession multi-session** | **✓ Round 2e** | | DBus sender→PID via GetConnectionUnixProcessID |
+| **VT-switch on Session.Activate** | **✓ Round 2e** | | VT_ACTIVATE ioctl on /dev/tty0 |
 | Linger sessions (post-logout) | | ✗ not supported | Maybe never — niche |
-| User objects under `/login1/user/_<uid>` | | ✗ no methods | Round 2e if any client probes |
+| User objects under `/login1/user/_<uid>` | | ✗ no methods | Round 2f if any client probes |
+| Session lifecycle FIFO HUP-detect | | ✗ daemon discards write-end | Round 2f — same shape as inhibitor watcher |
 
 ## How writeonce-login will integrate (Phase 9)
 
