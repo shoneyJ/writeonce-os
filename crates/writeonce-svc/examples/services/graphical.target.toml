@@ -1,0 +1,17 @@
+# /etc/writeonce/services/graphical.target.toml
+#
+# Synthetic target — "multi-user.target + display + login". Units
+# specific to the graphical experience use this as their
+# install.wanted-by anchor (writeonce-login, anything else that should
+# only fire when graphical mode is the goal).
+
+[unit]
+description = "Graphical interface (X11 + i3)"
+after       = ["multi-user.target"]
+requires    = ["multi-user.target"]
+
+[service]
+type        = "oneshot"
+exec-start  = "/bin/true"
+remain-after-exit = true
+slice       = "system.slice"

@@ -1,0 +1,22 @@
+# /etc/writeonce/services/dbus.service.toml
+#
+# The D-Bus system message bus. First system service to come up after
+# basic mounts; everything else (logind, iwd, NetworkManager-equiv)
+# requires it.
+
+[unit]
+description = "D-Bus system message bus"
+after       = ["sysinit.target"]
+
+[service]
+type        = "simple"
+exec-start  = "/usr/bin/dbus-daemon --system --nofork --syslog-only"
+exec-stop   = "/usr/bin/dbus-send --system --type=method_call --dest=org.freedesktop.DBus / org.freedesktop.DBus.Quit"
+restart     = "on-failure"
+restart-sec = "5s"
+user        = "messagebus"
+group       = "messagebus"
+slice       = "system.slice"
+
+[install]
+wanted-by   = ["multi-user.target"]

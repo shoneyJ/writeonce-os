@@ -1,0 +1,19 @@
+# /etc/pam.d/writeonce-login
+#
+# PAM service file consumed by writeonce-login. Standard four-stage
+# chain: auth → account → session → password.
+#
+# We use pam_unix for password verification against /etc/shadow.
+# pam_nologin blocks login if /etc/nologin exists. pam_env loads
+# /etc/environment.
+
+auth      required  pam_unix.so       nullok_secure
+auth      required  pam_nologin.so
+
+account   required  pam_unix.so
+
+session   required  pam_unix.so
+session   required  pam_env.so        envfile=/etc/environment
+session   optional  pam_motd.so       motd=/etc/motd
+
+password  required  pam_unix.so       sha512 shadow

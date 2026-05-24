@@ -1,0 +1,20 @@
+# Cargo behavior pinned at the repo root.
+# Deliberately no [build] target = "..." here — that would force every
+# `cargo test` to use the musl target, breaking host-side test runs.
+# Use the alias below for static release builds.
+
+[alias]
+build-pid1   = "build -p writeonce-pid1 --release --target x86_64-unknown-linux-musl"
+test-pid1    = "test  -p writeonce-pid1"
+# writeonce-logind uses zbus (an async runtime + many transitive deps);
+# we build dynamic-glibc rather than musl. Same reasoning as writeonce-login.
+build-logind = "build -p writeonce-logind --release"
+check-logind = "check -p writeonce-logind --release"
+# writeonce-installer also dynamic-glibc — needs host runtime tools
+# (sgdisk, mkfs.vfat, mkfs.ext4, mount) at install time anyway.
+build-installer = "build -p writeonce-installer --release"
+check-installer = "check -p writeonce-installer --release"
+# writeonce-session-create: dynamic-glibc; zbus client for the
+# logind CreateSession dance, then execve's into the user shell.
+build-session-create = "build -p writeonce-session-create --release"
+check-session-create = "check -p writeonce-session-create --release"

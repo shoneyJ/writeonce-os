@@ -1,0 +1,14 @@
+# /etc/writeonce/services/sysinit.target.toml
+#
+# The earliest synthetic target after PID 1's filesystem mounts.
+# Anything that depends on /proc + /sys + /dev being mounted and
+# basic kernel infrastructure being up should use this as its anchor.
+
+[unit]
+description = "System initialization complete"
+
+[service]
+type        = "oneshot"
+exec-start  = "/bin/true"
+remain-after-exit = true
+slice       = "system.slice"

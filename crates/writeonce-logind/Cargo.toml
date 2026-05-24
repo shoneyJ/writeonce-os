@@ -1,0 +1,26 @@
+[package]
+name        = "writeonce-logind"
+version     = "0.1.0"
+description = "WriteOnce OS — minimal systemd-logind D-Bus shim for i3more-lock + desktop session integration."
+
+edition      .workspace = true
+license      .workspace = true
+authors      .workspace = true
+rust-version .workspace = true
+
+# NOTE: zbus pulls in a tokio-like async runtime + many transitive
+# crates. We build this crate dynamic-glibc, not static-musl. Same
+# reasoning as writeonce-login. Build via:
+#   ./build/in-container.sh cargo build -p writeonce-logind --release
+
+[dependencies]
+libc        .workspace = true
+serde       .workspace = true
+log         .workspace = true
+zbus        .workspace = true
+signal-hook .workspace = true
+env_logger  .workspace = true
+
+[[bin]]
+name = "writeonce-logind"
+path = "src/main.rs"

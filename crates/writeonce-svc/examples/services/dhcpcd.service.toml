@@ -1,0 +1,22 @@
+# /etc/writeonce/services/dhcpcd.service.toml
+#
+# DHCP client for the wired ethernet interface. On T450 the interface
+# is enp0s31f6 (Intel I218-LM). On other hardware the install-time
+# stage script should rewrite the exec-start line with the detected
+# interface name.
+
+[unit]
+description = "DHCP client (wired)"
+after       = ["sysinit.target"]
+
+[service]
+type        = "simple"
+exec-start  = "/usr/sbin/dhcpcd --nobackground --quiet enp0s31f6"
+restart     = "on-failure"
+restart-sec = "10s"
+user        = "root"
+group       = "root"
+slice       = "system.slice"
+
+[install]
+wanted-by   = ["multi-user.target"]

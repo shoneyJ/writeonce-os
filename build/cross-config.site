@@ -1,0 +1,51 @@
+# Cached autoconf answers for cross-compile.
+# Pointed at by $CONFIG_SITE — autoconf sources this file before any
+# AC_TRY_RUN test, satisfying tests we can't actually run on the build
+# host (cross-compiled x86_64-lfs-linux-gnu binary vs container's
+# x86_64-pc-linux-gnu).
+#
+# Values reflect modern glibc (≥2.2) + Linux behaviour, which is what
+# the target sysroot uses.
+
+# glibc malloc(0) / realloc(NULL, 0) return non-NULL valid pointers.
+ac_cv_func_malloc_0_nonnull=yes
+ac_cv_func_realloc_0_nonnull=yes
+
+# fork/vfork work.
+ac_cv_func_fork_works=yes
+ac_cv_func_vfork_works=yes
+
+# mmap behaves POSIX-correctly.
+ac_cv_func_mmap_fixed_mapped=yes
+
+# IEEE-754 floating point.
+ac_cv_have_decl_isnan=yes
+ac_cv_have_decl_isinf=yes
+
+# POSIX file locking.
+ac_cv_func_chown_works=yes
+
+# getpgrp takes no args (POSIX).
+ac_cv_func_getpgrp_void=yes
+
+# setvbuf reverses args correctly (modern stdio).
+ac_cv_func_setvbuf_reversed=no
+
+# strerror_r returns char* (GNU) not int (POSIX).
+ac_cv_func_strerror_r_char_p=yes
+
+# stat handles trailing slash correctly.
+ac_cv_func_stat_empty_string_bug=no
+ac_cv_func_lstat_dereferences_slashed_symlink=yes
+ac_cv_func_lstat_empty_string_bug=no
+ac_cv_func_stat_ignores_trailing_slash=no
+
+# getmntent works (used by util-linux family).
+ac_cv_func_getmntent=yes
+
+# pread/pwrite are POSIX.
+ac_cv_func_pread=yes
+ac_cv_func_pwrite=yes
+
+# clock_gettime in libc since glibc 2.17.
+ac_cv_search_clock_gettime="none required"

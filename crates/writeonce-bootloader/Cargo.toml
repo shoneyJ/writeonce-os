@@ -1,0 +1,23 @@
+[package]
+name        = "writeonce-bootloader"
+version     = "0.1.0"
+description = "WriteOnce OS — UEFI bootloader (Phase 6)."
+
+edition      .workspace = true
+license      .workspace = true
+authors      .workspace = true
+rust-version .workspace = true
+
+# This crate is no_std and targets x86_64-unknown-uefi. Build with:
+#   ./build/in-container.sh cargo build -p writeonce-bootloader \
+#       --release --target x86_64-unknown-uefi
+# The output at target/x86_64-unknown-uefi/release/writeonce-bootloader.efi
+# is a PE/COFF binary the T450 UEFI firmware can load directly.
+
+[dependencies]
+uefi.workspace = true
+log .workspace = true
+
+[[bin]]
+name = "writeonce-bootloader"
+path = "src/main.rs"

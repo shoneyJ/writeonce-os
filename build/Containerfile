@@ -1,0 +1,77 @@
+# wo-builder — thin overlay on top of i3more-dev, fixed for non-root use.
+#
+# i3more-dev already ships every dev library WriteOnce phases need:
+#   libpam0g-dev      (Phase 9 writeonce-login)
+#   libdbus-1-dev     (Round 2d logind shim)
+#   libgtk-4-dev      (Phase 9 i3More cross-build)
+#   libpipewire-0.3-dev (Phase 8 audio stack)
+#   libglib2.0-dev, libcairo2-dev, libpango1.0-dev, libgdk-pixbuf-2.0-dev
+#   libgraphene-1.0-dev, libharfbuzz-dev
+#   libx11-dev, libxcb1-dev, libxkbcommon-dev
+#   libclang-dev (bindgen)
+#   build-essential, pkg-config
+#   rustc/cargo 1.95
+#
+# i3more-dev places rustup at /root/.cargo with /root mode 700, which
+# blocks our `docker run --user $UID:$GID` pattern. This overlay opens
+# the read paths and pre-adds the musl target the writeonce-pid1 +
+# writeonce-svc crates target.
+#
+# Layer adds ~2 MB on top of the 2.77 GB base.
+
+FROM i3more-dev:latest
+
+# Supply-chain tooling needed by 01-fetch.sh + downstream build steps.
+# i3more-dev focuses on Rust/Cargo and dev libraries; it doesn't ship
+# wget / curl / gpg / cmake / xz-utils that the WriteOnce fetch +
+# Phase 0-8 build chain need.
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        wget                \
+        curl                \
+        ca-certificates     \
+        gnupg               \
+        xz-utils            \
+        bzip2               \
+        zstd                \
+        cmake               \
+        gawk                \
+        bison               \
+        flex                \
+        gettext             \
+        texinfo             \
+        rsync               \
+        cpio                \
+        file                \
+        gperf               \
+        autoconf            \
+        automake            \
+        libtool             \
+        python3             \
+        python3-mako        \
+        python3-jinja2      \
+        python3-setuptools  \
+        python3-yaml        \
+        meson               \
+        ninja-build         \
+        pkg-config          \
+        xsltproc            \
+        libxml2-utils       \
+        intltool            \
+        docbook-xsl         \
+        libelf-dev          \
+    && rm -rf /var/lib/apt/lists/*
+
+# Path traversal + reads for the rustup install. /root stays 755 (g+x for
+# traversal only); the toolchain itself becomes world-readable. Then add
+# musl + uefi targets and re-chmod (rustup writes new files when adding
+# a target).
+RUN chmod 755 /root && \
+    chmod -R go+rX /root/.cargo /root/.rustup && \
+    rustup target add x86_64-unknown-linux-musl && \
+    rustup target add x86_64-unknown-uefi && \
+    chmod -R go+rX /root/.cargo /root/.rustup
+
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+WORKDIR /work
+CMD ["bash"]

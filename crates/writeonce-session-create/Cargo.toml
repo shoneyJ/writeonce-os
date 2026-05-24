@@ -1,0 +1,28 @@
+[package]
+name        = "writeonce-session-create"
+version     = "0.1.0"
+description = "WriteOnce OS — post-login helper that registers a logind session and execve's the user's shell."
+
+edition      .workspace = true
+license      .workspace = true
+authors      .workspace = true
+rust-version .workspace = true
+
+# Runs as root, started by writeonce-login after PAM_SUCCESS. Calls
+# Manager.CreateSession on writeonce-logind via the system D-Bus, then
+# drops privileges to the authenticated user and execve's the
+# configured session script (typically /usr/bin/startx).
+#
+# Dynamic-glibc (zbus + tokio family of crates). Same reasoning as
+# writeonce-login and writeonce-logind.
+
+[dependencies]
+libc        .workspace = true
+log         .workspace = true
+env_logger  .workspace = true
+zbus        .workspace = true
+anyhow      .workspace = true
+
+[[bin]]
+name = "writeonce-session-create"
+path = "src/main.rs"

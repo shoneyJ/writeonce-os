@@ -1,0 +1,14 @@
+[package]
+name        = "writeonce-svc"
+version     = "0.1.0"
+description = "WriteOnce OS — Phase-4 service supervisor (scaffold)."
+
+edition      .workspace = true
+license      .workspace = true
+authors      .workspace = true
+rust-version .workspace = true
+
+[dependencies]
+libc  .workspace = true
+serde .workspace = true
+toml  .workspace = true

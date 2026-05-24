@@ -23,6 +23,19 @@ work/
 logs/
 gnupg/
 
+# --- vendor/ ---
+# Local working copy of the i3 fork rsync'd from
+# .agents/reference/i3More/vendor/i3. The Phase 9 build no longer uses
+# this directory (i3 + i3More are external artifacts copied straight
+# into the sysroot by 17-stage-sysroot.sh), but keep the ignore so
+# stale checkouts don't accidentally land in the tree.
+vendor/
+
+# --- staging/ ---
+# Assembled installable sysroot (output of 17-stage-sysroot.sh).
+# Multi-GB; never commit.
+staging/
+
 # --- Ephemeral run state ---
 # *.next-lock   SHA-256 hashes awaiting review before commit to checksums.txt
 # *.part        partial downloads from wget

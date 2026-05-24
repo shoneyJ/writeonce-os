@@ -1,0 +1,6 @@
+PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
+LANG=en_US.UTF-8
+LC_ALL=en_US.UTF-8
+EDITOR=nvim
+PAGER=less
+TERM=linux

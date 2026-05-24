@@ -1,0 +1,4 @@
+[unit]
+description = "Default supervisor target — equivalent to multi-user"
+requires    = ["multi-user.target"]
+after       = ["multi-user.target"]

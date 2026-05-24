@@ -143,10 +143,49 @@ if /bin/busybox ip link show enp0s25 >/dev/null 2>&1; then
     /bin/busybox udhcpc -i enp0s25 -q -t 3 -n 2>/dev/null || true
 fi
 
+# If the Rust PID 1 prototype (Phase 3) is staged into the initramfs at
+# /sbin/writeonce-pid1, exec it as the real PID 1 and never return.
+# Falls back to the BusyBox shell when absent so this initramfs is also
+# useful for bringup before writeonce-pid1 has been built.
+if [ -x /sbin/writeonce-pid1 ]; then
+    echo "Handing off to /sbin/writeonce-pid1"
+    exec /sbin/writeonce-pid1
+fi
+
 echo "Drop to BusyBox shell (PID $$). Type 'reboot' to restart."
 exec /bin/busybox sh
 INIT
     chmod +x "$INITRAMFS_ROOT/init"
+
+    # Stage the writeonce-initramfs binary as /init if it's been cross-built.
+    # When present, it replaces the BusyBox shell stub above and handles
+    # the full module-load + root-discover + pivot_root + execve-PID-1
+    # flow in Rust (Phase 5).
+    local rust_init_bin="$BUILD_ROOT/../target/x86_64-unknown-linux-musl/release/writeonce-initramfs"
+    if [[ -x "$rust_init_bin" ]]; then
+        install -Dm755 "$rust_init_bin" "$INITRAMFS_ROOT/init"
+        echo "    staged Rust /init ($(du -h "$rust_init_bin" | awk '{print $1}'))"
+    else
+        echo "    Rust /init not built; keeping BusyBox shell stub at /init"
+    fi
+
+    # Stage the writeonce-pid1 binary if it's been cross-built.
+    # The /init script execs it when present; otherwise drops to BusyBox sh.
+    local pid1_bin="$BUILD_ROOT/../target/x86_64-unknown-linux-musl/release/writeonce-pid1"
+    if [[ -x "$pid1_bin" ]]; then
+        install -Dm755 "$pid1_bin" "$INITRAMFS_ROOT/sbin/writeonce-pid1"
+        echo "    staged writeonce-pid1 ($(du -h "$pid1_bin" | awk '{print $1}'))"
+        # Default config so PID 1 finds something sensible on first boot.
+        mkdir -p "$INITRAMFS_ROOT/etc/writeonce"
+        cat > "$INITRAMFS_ROOT/etc/writeonce/pid1.toml" <<'PID1CFG'
+tty                    = "/dev/tty1"
+child                  = "/bin/busybox"
+child_args             = ["sh"]
+shutdown_grace_seconds = 10
+PID1CFG
+    else
+        echo "    writeonce-pid1 not built (run \`cargo build-pid1\`); initramfs will use BusyBox sh"
+    fi
 
     # Stage kernel modules
     if [[ -d "$MODULES_STAGE/lib/modules" ]]; then

@@ -1,0 +1,21 @@
+# /etc/writeonce/services/logind.service.toml
+#
+# WriteOnce's logind D-Bus shim. Must come up after dbus.service so the
+# system bus exists for it to claim a name on.
+
+[unit]
+description = "WriteOnce logind D-Bus shim"
+after       = ["dbus.service"]
+requires    = ["dbus.service"]
+
+[service]
+type        = "simple"
+exec-start  = "/usr/sbin/writeonce-logind"
+restart     = "on-failure"
+restart-sec = "5s"
+user        = "root"
+group       = "root"
+slice       = "system.slice"
+
+[install]
+wanted-by   = ["multi-user.target"]

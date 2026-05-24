@@ -1,0 +1,24 @@
+# /etc/writeonce/services/writeonce-login.service.toml
+#
+# Spawns writeonce-login on /dev/tty1. This is the user-visible "login:"
+# prompt after boot. PAM authenticates; on success writeonce-login
+# execs /usr/bin/startx (or the configured login shell command) for
+# the authenticated user, which in turn brings up X + i3.
+
+[unit]
+description = "Console login on tty1"
+after       = ["multi-user.target", "logind.service"]
+requires    = ["logind.service"]
+
+[service]
+type        = "simple"
+exec-start  = "/usr/sbin/writeonce-login --tty /dev/tty1"
+restart     = "always"
+restart-sec = "1s"
+# Standard input/output redirected to the tty by writeonce-login itself.
+user        = "root"
+group       = "root"
+slice       = "system.slice"
+
+[install]
+wanted-by   = ["graphical.target"]

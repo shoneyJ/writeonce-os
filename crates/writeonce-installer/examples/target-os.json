@@ -1,0 +1,22 @@
+{
+  "schema_version": "0.1.0",
+  "_comment": "Optional file. Pass via --spec target-os.json. Any field omitted (or set to null) triggers an interactive prompt.",
+
+  "partitions": {
+    "esp_mib": 512,
+    "root_gib": null
+  },
+
+  "user": {
+    "name": "shoney",
+    "real_name": "Shoney Arickathil",
+    "password_hash": null,
+    "shell": "/bin/bash",
+    "groups": ["wheel", "video", "audio", "input", "plugdev"]
+  },
+
+  "keyboard": {
+    "layout": "us",
+    "variant": null
+  }
+}

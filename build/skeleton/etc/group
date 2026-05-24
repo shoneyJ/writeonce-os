@@ -1,0 +1,14 @@
+root:x:0:
+daemon:x:1:
+bin:x:2:
+sys:x:3:
+tty:x:5:
+disk:x:6:
+audio:x:18:writeonce
+video:x:44:writeonce
+plugdev:x:46:writeonce
+input:x:47:writeonce
+messagebus:x:99:
+wheel:x:100:writeonce
+nogroup:x:65534:
+writeonce:x:1000:

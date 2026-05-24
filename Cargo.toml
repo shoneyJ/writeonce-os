@@ -1,0 +1,61 @@
+# WriteOnce OS — Cargo workspace root.
+#
+# Each Rust component of the OS lives under crates/ as its own member crate:
+#   - writeonce-pid1       PID 1 binary (Phase 3)
+# Future members (added as each phase lands):
+#   - writeonce-svc        service supervisor (Phase 4)
+#   - writeonce-initramfs  Rust /init (Phase 5)
+#   - writeonce-bootloader UEFI app via uefi-rs (Phase 6)
+
+[workspace]
+resolver = "2"
+members  = [
+    "crates/writeonce-pid1",
+    "crates/writeonce-svc",
+    "crates/writeonce-login",
+    "crates/writeonce-logind",
+    "crates/writeonce-session-create",
+    "crates/writeonce-initramfs",
+    "crates/writeonce-bootloader",
+    "crates/writeonce-installer",
+]
+
+[workspace.package]
+edition      = "2021"
+license      = "GPL-3.0-or-later"
+authors      = ["Shoney Arickathil"]
+rust-version = "1.74"
+
+[workspace.dependencies]
+libc  = "0.2"
+serde = { version = "1", features = ["derive"] }
+toml  = "0.8"
+log   = "0.4"
+# D-Bus (writeonce-logind). zbus is async-first; we use its blocking
+# wrapper for the single-threaded logind daemon. Pure-Rust DBus impl —
+# no libdbus.so runtime dep beyond what dbus.service already supplies.
+# Default features (async-io runtime) are required even when consuming
+# only the blocking API; the blocking wrapper sits on top of an executor.
+zbus        = { version = "5", features = ["blocking-api"] }
+signal-hook = "0.3"
+env_logger  = "0.11"
+# writeonce-installer. Tokio chosen here (vs async-io in logind) because
+# the installer juggles many concurrent I/O streams (read source +
+# decompress + write USB + SHA + TUI) where work-stealing helps.
+tokio       = { version = "1", features = ["rt-multi-thread", "macros", "fs", "io-util", "process", "signal", "sync", "time"] }
+clap        = { version = "4", features = ["derive"] }
+sha2        = "0.10"
+tar         = "0.4"
+zstd        = "0.13"
+indicatif   = "0.17"
+anyhow      = "1"
+tempfile    = "3"
+rpassword   = "7"
+serde_json  = "1"
+# TUI (installer only). ratatui's stable 0.29 line + crossterm backend.
+ratatui     = "0.29"
+crossterm   = "0.28"
+# UEFI target — writeonce-bootloader only. The `uefi` crate is no_std;
+# the `helpers` feature provides a global allocator, panic handler, and
+# log::Log impl wired to the UEFI console.
+uefi  = { version = "0.32", default-features = false, features = ["alloc", "global_allocator", "panic_handler", "logger"] }

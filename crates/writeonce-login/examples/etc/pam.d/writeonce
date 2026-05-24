@@ -1,0 +1,30 @@
+# /etc/pam.d/writeonce — minimal PAM stack for the WriteOnce console login.
+#
+# This file is consumed by libpam when writeonce-login calls
+# pam_start("writeonce", ...). Each line lists a *module type*, a
+# *control* keyword, the *module path*, and per-module *arguments*.
+#
+# Reference: man pam.conf, man pam_unix, man pam_securetty.
+
+# 1. Authentication: ask for the password, check against /etc/shadow.
+#    `nullok` permits accounts with empty passwords (development only).
+#    `try_first_pass` lets the password be reused from a prior stack.
+auth      required   pam_unix.so          nullok try_first_pass
+
+# 2. Account: verify the account is valid (not expired, allowed at this time).
+account   required   pam_unix.so
+
+# 3. Password: rules for updating credentials (we don't enforce strength yet).
+password  required   pam_unix.so          sha512 shadow nullok try_first_pass
+
+# 4. Session: set up the per-session environment (limits, env vars, …).
+session   required   pam_limits.so
+session   required   pam_unix.so
+session   optional   pam_env.so
+
+# Notes for production:
+#   - Drop `nullok` once user accounts have real passwords.
+#   - Add `auth required pam_securetty.so` to restrict root to listed ttys.
+#   - Add `account required pam_nologin.so` to honor /etc/nologin.
+#   - Replace pam_unix with pam_systemd or pam_loginuid for cgroup/session
+#     tracking once writeonce-svc's logind shim ships (Round 2d).

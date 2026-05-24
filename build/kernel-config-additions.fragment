@@ -71,3 +71,86 @@ CONFIG_MISC_RTSX=m
 # --- Initramfs compression (zstd for Phase 5 Rust initramfs; gzip transitional) ---
 CONFIG_RD_GZIP=y
 CONFIG_RD_ZSTD=y
+
+# ============================================================================
+# Container support — Docker / Podman / youki / nerdctl all need these.
+# See docs/learning/containers-kernel-requirements.md for what each enables.
+# ============================================================================
+
+# Linux namespaces (the primary isolation primitive).
+CONFIG_NAMESPACES=y
+CONFIG_UTS_NS=y
+CONFIG_IPC_NS=y
+CONFIG_USER_NS=y
+CONFIG_PID_NS=y
+CONFIG_NET_NS=y
+CONFIG_CGROUP_NS=y
+CONFIG_TIME_NS=y
+
+# OverlayFS — container image layering ("union mount" of read-only layers).
+CONFIG_OVERLAY_FS=y
+CONFIG_OVERLAY_FS_REDIRECT_DIR=y
+CONFIG_OVERLAY_FS_INDEX=y
+
+# Bridge + veth + virtual interfaces — the standard container network plumbing.
+CONFIG_BRIDGE=y
+CONFIG_BRIDGE_NETFILTER=m
+CONFIG_VLAN_8021Q=m
+CONFIG_VETH=m
+CONFIG_MACVLAN=m
+CONFIG_IPVLAN=m
+
+# Netfilter (nftables-first; iptables compatibility via xtables).
+CONFIG_NETFILTER=y
+CONFIG_NETFILTER_XTABLES=y
+CONFIG_NF_TABLES=m
+CONFIG_NF_TABLES_INET=y
+CONFIG_NF_TABLES_NETDEV=y
+CONFIG_NFT_NAT=m
+CONFIG_NFT_MASQ=m
+CONFIG_NF_NAT=m
+CONFIG_NF_CONNTRACK=m
+CONFIG_IP_NF_IPTABLES=m
+CONFIG_IP_NF_FILTER=m
+CONFIG_IP_NF_NAT=m
+
+# Seccomp BPF — per-container syscall filtering.
+CONFIG_SECCOMP=y
+CONFIG_SECCOMP_FILTER=y
+
+# Extra cgroup controllers a container runtime expects.
+CONFIG_CPUSETS=y
+CONFIG_CGROUP_CPUACCT=y
+CONFIG_CGROUP_DEVICE=y
+CONFIG_CGROUP_HUGETLB=y
+CONFIG_CGROUP_PERF=y
+CONFIG_CGROUP_SCHED=y
+CONFIG_FAIR_GROUP_SCHED=y
+CONFIG_BLK_CGROUP=y
+CONFIG_MEMCG_SWAP=y
+
+# Misc container kernel deps.
+CONFIG_HUGETLBFS=y
+CONFIG_SWAP=y
+
+# ============================================================================
+# Developer tooling — perf, bcc, bpftrace, strace, ftrace.
+# ============================================================================
+
+# BPF + BTF (the modern observability stack).
+CONFIG_BPF=y
+CONFIG_BPF_SYSCALL=y
+CONFIG_BPF_JIT=y
+CONFIG_BPF_JIT_ALWAYS_ON=y
+CONFIG_DEBUG_INFO_BTF=y
+CONFIG_DEBUG_INFO_BTF_MODULES=y
+
+# ftrace / kprobes / uprobes / perf events.
+CONFIG_FUNCTION_TRACER=y
+CONFIG_FUNCTION_GRAPH_TRACER=y
+CONFIG_DYNAMIC_FTRACE=y
+CONFIG_FTRACE_SYSCALLS=y
+CONFIG_KPROBES=y
+CONFIG_UPROBES=y
+CONFIG_PERF_EVENTS=y
+CONFIG_HW_PERF_EVENTS=y

@@ -1,0 +1,15 @@
+# /etc/writeonce/services/multi-user.target.toml
+#
+# Synthetic target — the "fully booted, non-graphical" milestone.
+# Units that should be up before the user can log in declare
+# `wanted-by = ["multi-user.target"]`.
+
+[unit]
+description = "Multi-user system (non-graphical)"
+after       = ["sysinit.target"]
+
+[service]
+type        = "oneshot"
+exec-start  = "/bin/true"
+remain-after-exit = true
+slice       = "system.slice"

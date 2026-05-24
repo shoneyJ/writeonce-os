@@ -1,0 +1,15 @@
+# /etc/shadow.template — installer rewrites this with a real entry.
+# The install step prompts for a password (or accepts one via the
+# JSON spec) and runs `chpasswd` / `passwd` to populate /etc/shadow
+# from this template.
+#
+# Format: name:!:lastchanged:min:max:warn:inactive:expire:reserved
+#
+# `!` in the password field locks the account (no login until set).
+root:!:19501:0:99999:7:::
+daemon:*:19501:0:99999:7:::
+bin:*:19501:0:99999:7:::
+sys:*:19501:0:99999:7:::
+messagebus:*:19501:0:99999:7:::
+nobody:*:19501:0:99999:7:::
+writeonce:!:19501:0:99999:7:::

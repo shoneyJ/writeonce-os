@@ -1,0 +1,88 @@
+# ~/.config/i3/config — i3 configuration for the WriteOnce + i3More desktop.
+#
+# i3More is the default UX layer. Three i3 tools that ship with stock
+# i3 desktops are NOT used here — they're replaced by i3More binaries:
+#   - dmenu / rofi   → i3more-launcher
+#   - i3lock         → i3more-lock
+#   - i3status / i3bar → i3more (freestanding GTK4 bar)
+#
+# i3More daemons are spawned from ~/.xinitrc; this config just wires
+# keybindings to them.
+
+set $mod Mod4
+
+# Font for window titles.
+font pango:monospace 10
+
+# Floating modifier (drag windows with $mod + left-click).
+floating_modifier $mod
+
+# Terminal (alacritty from nixpkgs Phase 10).
+bindsym $mod+Return exec alacritty
+
+# Kill focused window.
+bindsym $mod+Shift+q kill
+
+# Application launcher — i3More replaces dmenu.
+bindsym $mod+d exec i3more-launcher
+
+# Lock screen — i3More replaces i3lock.
+bindsym $mod+l exec i3more-lock
+
+# Reload + restart i3.
+bindsym $mod+Shift+c reload
+bindsym $mod+Shift+r restart
+
+# Exit i3 (logs out of the X session).
+bindsym $mod+Shift+e exec "i3-msg exit"
+
+# Move focus.
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+semicolon focus right
+
+# Move focused window.
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+semicolon move right
+
+# Workspaces 1-9.
+set $ws1 "1"
+set $ws2 "2"
+set $ws3 "3"
+set $ws4 "4"
+set $ws5 "5"
+set $ws6 "6"
+set $ws7 "7"
+set $ws8 "8"
+set $ws9 "9"
+
+bindsym $mod+1 workspace $ws1
+bindsym $mod+2 workspace $ws2
+bindsym $mod+3 workspace $ws3
+bindsym $mod+4 workspace $ws4
+bindsym $mod+5 workspace $ws5
+bindsym $mod+6 workspace $ws6
+bindsym $mod+7 workspace $ws7
+bindsym $mod+8 workspace $ws8
+bindsym $mod+9 workspace $ws9
+
+bindsym $mod+Shift+1 move container to workspace $ws1
+bindsym $mod+Shift+2 move container to workspace $ws2
+bindsym $mod+Shift+3 move container to workspace $ws3
+bindsym $mod+Shift+4 move container to workspace $ws4
+
+# i3More-specific keybindings (uncomment after i3More install).
+# bindsym $mod+space        exec i3more-launcher
+# bindsym $mod+t            exec i3more-translate
+# bindsym $mod+w            exec i3more-workspace
+# bindsym $mod+p            exec i3more-power
+# bindsym XF86AudioRaiseVolume exec i3more-audio --volume +5
+# bindsym XF86AudioLowerVolume exec i3more-audio --volume -5
+# bindsym XF86AudioMute        exec i3more-audio --mute toggle
+
+# No `bar {}` block. i3More is a freestanding standalone X11 client
+# that positions itself on-screen; it does NOT run inside i3bar via
+# status_command. (Standalone == it doesn't share a process with i3.)

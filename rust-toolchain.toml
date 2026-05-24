@@ -1,0 +1,9 @@
+# Pin the Rust toolchain so the cross-build is reproducible across machines.
+# `rustup` reads this on entry to the workspace and installs the listed
+# components/targets if absent.
+
+[toolchain]
+channel    = "stable"
+components = ["rustfmt", "clippy"]
+targets    = ["x86_64-unknown-linux-musl"]
+profile    = "minimal"

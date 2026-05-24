@@ -1,0 +1,5 @@
+# /etc/writeonce/login.toml
+hostname       = ""                                # empty → read /etc/hostname
+welcome        = "WriteOnce OS (developer build)"
+pam-service    = "writeonce"
+session-script = "/etc/writeonce/session-start.sh"

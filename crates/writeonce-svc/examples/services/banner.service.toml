@@ -1,0 +1,11 @@
+[unit]
+description = "Print a startup banner and exit cleanly"
+
+[service]
+type              = "oneshot"
+exec-start        = "/bin/echo writeonce-svc: banner.service ran"
+remain-after-exit = true
+user              = "root"
+
+[install]
+wanted-by         = ["multi-user.target"]

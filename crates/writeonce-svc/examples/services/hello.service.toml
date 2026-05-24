@@ -1,0 +1,13 @@
+[unit]
+description = "Long-running 'hello' service — sleeps forever after one print"
+after       = ["banner.service"]
+
+[service]
+type        = "simple"
+exec-start  = "/bin/sleep 3600"
+restart     = "no"
+user        = "root"
+slice       = "wo.slice"
+
+[install]
+wanted-by   = ["multi-user.target"]

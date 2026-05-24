@@ -1,0 +1,12 @@
+[package]
+name        = "writeonce-initramfs"
+version     = "0.1.0"
+description = "WriteOnce OS — Rust /init for the initramfs (Phase 5)."
+
+edition      .workspace = true
+license      .workspace = true
+authors      .workspace = true
+rust-version .workspace = true
+
+[dependencies]
+libc.workspace = true

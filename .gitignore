@@ -38,6 +38,19 @@ Thumbs.db
 # for the binary crates this project produces.
 target/
 
+# --- Container bind-mount caches ---
+# build/in-container.sh sets CARGO_HOME and HOME inside the container to
+# bind-mounted subdirs of the repo so cargo's registry + rustup metadata
+# end up host-owned. Both are regenerable; never commit.
+# Note: .cargo/ (the config dir with our build aliases) IS tracked —
+# only the cache below is ignored.
+.cargo-cache/
+.container-home/
+
+# --- Claude Code per-project state ---
+# settings.local.json is machine-local; never commit.
+.claude/
+
 # --- Phase-snapshot tarballs (Track S in plan/00-roadmap.md) ---
 snapshots/
 

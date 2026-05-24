@@ -100,40 +100,185 @@ No methods. Most callers just read `ActiveSession` after a VT switch.
 | User objects under `/login1/user/_<uid>` | | ✗ no methods | Round 2f if any client probes |
 | Session lifecycle FIFO HUP-detect | | ✗ daemon discards write-end | Round 2f — same shape as inhibitor watcher |
 
-## How writeonce-login will integrate (Phase 9)
+## Round 2e changes in detail
 
-The boot path becomes:
+### Inhibitor lifecycle tracking (`crates/writeonce-logind/src/inhibitor.rs`)
+
+The Round 2d implementation of `Manager.Inhibit` was an honour-system
+stub: we created a pipe, returned the read-end, discarded the
+write-end, and never reaped the inhibitor record. Round 2e flips the
+pipe direction and adds a dedicated watcher thread.
+
+**The new shape:**
 
 ```
-writeonce-pid1 → writeonce-svc → dbus.service     ✓ existing
-                                ↓
-                       writeonce-logind.service   ← this round registers
-                                ↓
-                       (logind owns the bus name)
-                                ↓
-              writeonce-login spawns on tty1      ← Phase 9 integration
-                       ↓
-                       PAM auth ✓
-                       ↓
-                       D-Bus call to Manager.CreateSession(...)
-                       ↓
-                       Get back: session_id, runtime_dir, lifecycle_fd
-                       ↓
-                       export XDG_SESSION_ID=$session_id
-                       export XDG_RUNTIME_DIR=$runtime_dir
-                       hold lifecycle_fd open
-                       ↓
-                       execve user's shell / .xinitrc
-                       ↓
-                       i3 starts, i3more applets connect to logind via
-                       Manager.GetCurrentSession(), subscribe to Lock/Unlock
+┌──────────────────────────────┐         ┌──────────────────────────┐
+│ writeonce-logind             │         │ Caller (e.g. updater)    │
+│                              │         │                          │
+│   Manager.Inhibit() ─────────┼─────────┤  receives WRITE-end fd   │
+│        │                     │         │  via D-Bus FD passing    │
+│        ▼                     │         │                          │
+│   pipe2(O_CLOEXEC) ───┐       │         │  holds it open while     │
+│                       │       │         │  inhibition needed       │
+│   keep READ-end ◄──── ┘       │         │                          │
+│   register(id, fd)            │         │  process exits → kernel  │
+│        │                      │         │  closes write-end        │
+│        ▼                      │         │                          │
+│ ┌──────────────────┐          │         └──────────────────────────┘
+│ │ InhibitorWatcher │                                  │
+│ │ (thread)         │                                  │
+│ │                  │                                  │
+│ │ epoll_wait(...)  │◄─────── EPOLLHUP on read-end ────┘
+│ │   on EPOLLHUP:   │
+│ │     state.lock() │
+│ │     remove(id)   │
+│ │     close fd     │
+│ └──────────────────┘                                              │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-The lifecycle FD is the crucial bit: the user shell inherits it,
-and when the user logs out (shell exits, kernel reaps everything,
-all FDs close), the write-end of our pipe loses its last writer.
-Round 2e will add an epoll watch on the read-end so the daemon
-notices and auto-calls ReleaseSession.
+**Key invariants:**
+
+- The daemon owns the **read** end (the one that gets EPOLLHUP when the
+  peer closes).
+- The caller owns the **write** end. When their process exits or
+  crashes, the kernel closes all their FDs; the kernel emits HUP on
+  our read-end.
+- The watcher thread reaps the inhibitor record from `AppState` in
+  response, holding the mutex only long enough to remove the entry.
+- A "wake pipe" (`InhibitorWatcher.wake_{read,write}`) is registered
+  with the same epoll so `register()` can interrupt a blocked
+  `epoll_wait` when new inhibitors are added between iterations.
+
+**Why a separate thread.** zbus runs an async executor on its own
+threads. The watcher could in principle be wired into that executor,
+but `epoll_wait` is fundamentally blocking and we don't want to occupy
+an executor task with it. A dedicated thread with one syscall in
+flight is the cleanest model — zero coordination with zbus's runtime.
+
+### VT switching (`crates/writeonce-logind/src/session.rs`)
+
+`Session.Activate` now calls `VT_ACTIVATE` directly:
+
+```rust
+const VT_ACTIVATE: libc::c_ulong = 0x5606;
+
+fn activate_vt(vtnr: u32) -> std::io::Result<()> {
+    let tty0 = std::fs::OpenOptions::new()
+        .read(true).write(true)
+        .open("/dev/tty0")?;
+    let rc = unsafe { libc::ioctl(tty0.as_raw_fd(), VT_ACTIVATE, vtnr as libc::c_ulong) };
+    if rc != 0 { return Err(std::io::Error::last_os_error()); }
+    Ok(())
+}
+```
+
+The ioctl number `0x5606` is `_IO('V', 6)` from `<linux/vt.h>`. /dev/tty0
+is the controlling tty for the active VT subsystem; the kernel routes
+the ioctl through to the VT layer. Caller-side: we need
+`CAP_SYS_TTY_CONFIG`, which root has (the daemon runs as root).
+
+Sessions with `vtnr == 0` (e.g. remote ssh sessions) refuse the call
+with a clear error — there's no VT to activate.
+
+### Sender PID lookup (`Manager.GetCurrentSession`)
+
+Round 2d's stub returned the single session if exactly one existed and
+errored on multi-session. Round 2e does it properly:
+
+```rust
+async fn resolve_sender(
+    conn: &zbus::Connection,
+    header: &zbus::message::Header<'_>,
+) -> zbus::Result<(u32, u32)> {
+    let sender = header.sender().ok_or(...)?.clone();
+    let bus = zbus::fdo::DBusProxy::new(conn).await?;
+    let pid = bus.get_connection_unix_process_id(sender.clone().into()).await?;
+    let uid = bus.get_connection_unix_user(sender.into()).await?;
+    Ok((uid, pid))
+}
+```
+
+The bus daemon (`dbus-daemon`) keeps a UID + PID per connection (it
+gets these via `SO_PEERCRED` when the client connects to its Unix
+socket). The `GetConnectionUnixProcessID` / `GetConnectionUnixUser`
+methods on `org.freedesktop.DBus` expose them.
+
+Once we have the sender PID, `AppState::find_session_by_pid` walks
+`/proc/<pid>/status:PPid` up to 32 hops looking for a `leader_pid`
+match. This is the same algorithm systemd-logind uses (search for
+`manager_get_session_by_pid` in systemd's source).
+
+The same `resolve_sender` helper now populates the `uid` + `pid`
+fields on Inhibitor records, so `ListInhibitors` returns accurate
+attribution instead of zeros.
+
+## How writeonce-login integrates (Round 2g, done)
+
+The boot path:
+
+```
+writeonce-pid1 → writeonce-svc → dbus.service     (Phase 9)
+                                ↓
+                       writeonce-logind.service   (claims org.freedesktop.login1)
+                                ↓
+              writeonce-login.service on tty1     (PAM prompt loop)
+                                ↓
+                       PAM authenticate + acct_mgmt + open_session ✓
+                                ↓
+                       fork()                                       (parent waits)
+                                ↓                                   ↓
+                       child (still root):                  parent loops on next user
+                       ↓
+                       execve /usr/sbin/writeonce-session-create
+                              --user <name> --uid <u> --gid <g>
+                              --home <h> --shell <s>
+                              --tty /dev/tty1 --vtnr 1
+                              --session-script /usr/bin/startx
+                                ↓
+                       writeonce-session-create (still root):
+                       - Connection::system() opens system bus
+                       - conn.call_method("CreateSession", uid, pid=getpid(), …)
+                       - returns (session_id, path, runtime_path, fifo_fd, …)
+                       - fcntl F_SETFD: clear FD_CLOEXEC on fifo_fd
+                       - mkdir + chown + chmod 0700 /run/user/<uid>
+                       - initgroups + setresgid + setresuid (uid, gid)
+                       - chdir $HOME
+                       - build env: USER, HOME, SHELL, PATH,
+                                    XDG_SESSION_ID=<id>, XDG_RUNTIME_DIR=…,
+                                    XDG_SESSION_CLASS=user, XDG_SESSION_TYPE=tty
+                       - execve /usr/bin/startx  ← fifo_fd inherited (no CLOEXEC)
+                                ↓
+                       startx → Xorg + ~/.xinitrc → i3 → user
+                                ↓
+                       i3More applets call GetCurrentSession() → matches our PID
+                       i3more-lock subscribes to Session.Lock signals → works.
+```
+
+**Why writeonce-session-create is a separate binary.** zbus pulls in
+~50 transitive deps and ~3 MB of binary weight. writeonce-login is a
+small (~900 KB) libc + PAM tool whose dep profile we want to keep
+minimal. By moving the D-Bus client into a dedicated helper that's
+exec'd as the final step before the user shell, writeonce-login stays
+lean while still completing the session-registration handshake.
+
+**Why session-create runs as root.** `CreateSession` is restricted to
+root by D-Bus policy (only root can claim arbitrary uids for new
+sessions). session-create starts as root (writeonce-login's child
+hasn't dropped privileges yet), calls CreateSession, then drops to the
+user just before execve.
+
+**Why the FD survives.** Both `into_raw_fd()` (releases Rust's
+ownership of the FD) and `fcntl(F_SETFD, !FD_CLOEXEC)` (clears the
+close-on-exec flag) are required. The kernel preserves open FDs
+across execve only if both conditions hold. The FD then propagates
+through startx → Xorg → i3 because none of them mark inherited FDs as
+CLOEXEC.
+
+When the user logs out: i3 exits → startx tears Xorg down → all
+inherited FDs close (including our lifecycle FD) → writeonce-logind's
+read-end gets EPOLLHUP (Round 2e watcher thread) → session
+auto-released, the per-session D-Bus object is removed.
 
 ## What zbus 5 forced us to do
 
@@ -198,7 +343,10 @@ CAP_SYS_ADMIN.
 ## Binary footprint
 
 ```
-target/release/writeonce-logind   5.2 MB unstripped, dynamic-glibc
+target/release/writeonce-logind   5.5 MB unstripped, dynamic-glibc
+                                  (Round 2d shipped 5.2 MB; the
+                                   inhibitor watcher + DBusProxy +
+                                   ioctl wiring added ~300 KB)
 ```
 
 Larger than the static-musl boot path binaries because zbus pulls in
@@ -248,4 +396,6 @@ shim is alive on the bus.
   service unit, not part of writeonce-svc.
 - `crates/writeonce-svc/examples/services/logind.service.toml` — the
   service unit that writeonce-svc consumes to spawn this daemon.
+- `crates/writeonce-logind/src/inhibitor.rs` — the Round 2e watcher
+  thread + epoll machinery.
 - Phase 9 (TBD) — writeonce-login + i3more-lock integration.

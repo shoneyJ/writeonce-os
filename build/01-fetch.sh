@@ -49,6 +49,114 @@ declare -A URLS=(
     [xz-${XZ_VERSION}.tar.xz]="https://github.com/tukaani-project/xz/releases/download/v${XZ_VERSION}/xz-${XZ_VERSION}.tar.xz"
 
     [busybox-${BUSYBOX_VERSION}.tar.bz2]="https://busybox.net/downloads/busybox-${BUSYBOX_VERSION}.tar.bz2"
+
+    # --- Phase 8 / Round 1 — base substrate ---
+    # zlib.net rotates download URLs aggressively (older versions move
+    # to /archive/); github madler/zlib release tags are stable.
+    [zlib-${ZLIB_VERSION}.tar.xz]="https://github.com/madler/zlib/releases/download/v${ZLIB_VERSION}/zlib-${ZLIB_VERSION}.tar.xz"
+    [brotli-${BROTLI_VERSION}.tar.gz]="https://github.com/google/brotli/archive/refs/tags/v${BROTLI_VERSION}.tar.gz"
+    [expat-${EXPAT_VERSION}.tar.xz]="https://github.com/libexpat/libexpat/releases/download/R_$(echo ${EXPAT_VERSION}|tr . _)/expat-${EXPAT_VERSION}.tar.xz"
+    [libffi-${LIBFFI_VERSION}.tar.gz]="https://github.com/libffi/libffi/releases/download/v${LIBFFI_VERSION}/libffi-${LIBFFI_VERSION}.tar.gz"
+    [libxml2-${LIBXML2_VERSION}.tar.xz]="https://download.gnome.org/sources/libxml2/$(echo ${LIBXML2_VERSION}|cut -d. -f1-2)/libxml2-${LIBXML2_VERSION}.tar.xz"
+    [util-macros-${UTIL_MACROS_VERSION}.tar.xz]="https://www.x.org/releases/individual/util/util-macros-${UTIL_MACROS_VERSION}.tar.xz"
+    [libpng-${LIBPNG_VERSION}.tar.xz]="https://downloads.sourceforge.net/libpng/libpng-${LIBPNG_VERSION}.tar.xz"
+    # sourceforge mirror redirects unreliably; use github releases.
+    [libjpeg-turbo-${LIBJPEG_TURBO_VERSION}.tar.gz]="https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/${LIBJPEG_TURBO_VERSION}/libjpeg-turbo-${LIBJPEG_TURBO_VERSION}.tar.gz"
+    [freetype-${FREETYPE_VERSION}.tar.xz]="https://downloads.sourceforge.net/freetype/freetype-${FREETYPE_VERSION}.tar.xz"
+    [fontconfig-${FONTCONFIG_VERSION}.tar.xz]="https://www.freedesktop.org/software/fontconfig/release/fontconfig-${FONTCONFIG_VERSION}.tar.xz"
+    [Linux-PAM-${LINUX_PAM_VERSION}.tar.xz]="https://github.com/linux-pam/linux-pam/releases/download/v${LINUX_PAM_VERSION}/Linux-PAM-${LINUX_PAM_VERSION}.tar.xz"
+    [libxcrypt-${LIBXCRYPT_VERSION}.tar.xz]="https://github.com/besser82/libxcrypt/releases/download/v${LIBXCRYPT_VERSION}/libxcrypt-${LIBXCRYPT_VERSION}.tar.xz"
+    [dbus-${DBUS_VERSION}.tar.xz]="https://dbus.freedesktop.org/releases/dbus/dbus-${DBUS_VERSION}.tar.xz"
+    [zstd-${ZSTD_VERSION}.tar.gz]="https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/zstd-${ZSTD_VERSION}.tar.gz"
+
+    # --- Phase 8 / Round 2 — X11 stack ---
+    # Layer 1 — protocol headers
+    [xorgproto-${XORGPROTO_VERSION}.tar.xz]="https://www.x.org/releases/individual/proto/xorgproto-${XORGPROTO_VERSION}.tar.xz"
+    [xcb-proto-${XCB_PROTO_VERSION}.tar.xz]="https://xorg.freedesktop.org/archive/individual/proto/xcb-proto-${XCB_PROTO_VERSION}.tar.xz"
+    # Layer 2 — core libs
+    [libXau-${LIBXAU_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXau-${LIBXAU_VERSION}.tar.xz"
+    [xtrans-${XTRANS_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/xtrans-${XTRANS_VERSION}.tar.xz"
+    [libxcb-${LIBXCB_VERSION}.tar.xz]="https://xorg.freedesktop.org/archive/individual/lib/libxcb-${LIBXCB_VERSION}.tar.xz"
+    [libX11-${LIBX11_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libX11-${LIBX11_VERSION}.tar.xz"
+    # Layer 3 — extension libs
+    [libXext-${LIBXEXT_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXext-${LIBXEXT_VERSION}.tar.xz"
+    [libICE-${LIBICE_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libICE-${LIBICE_VERSION}.tar.xz"
+    [libSM-${LIBSM_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libSM-${LIBSM_VERSION}.tar.xz"
+    [libXfixes-${LIBXFIXES_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXfixes-${LIBXFIXES_VERSION}.tar.xz"
+    [libXdamage-${LIBXDAMAGE_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXdamage-${LIBXDAMAGE_VERSION}.tar.xz"
+    [libXcomposite-${LIBXCOMPOSITE_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXcomposite-${LIBXCOMPOSITE_VERSION}.tar.xz"
+    [libXcursor-${LIBXCURSOR_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXcursor-${LIBXCURSOR_VERSION}.tar.xz"
+    [libXrender-${LIBXRENDER_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXrender-${LIBXRENDER_VERSION}.tar.xz"
+    [libXft-${LIBXFT_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXft-${LIBXFT_VERSION}.tar.xz"
+    [libXrandr-${LIBXRANDR_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXrandr-${LIBXRANDR_VERSION}.tar.xz"
+    [libXinerama-${LIBXINERAMA_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXinerama-${LIBXINERAMA_VERSION}.tar.xz"
+    [libXi-${LIBXI_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXi-${LIBXI_VERSION}.tar.xz"
+    [libXtst-${LIBXTST_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXtst-${LIBXTST_VERSION}.tar.xz"
+    [libxkbcommon-${LIBXKBCOMMON_VERSION}.tar.xz]="https://xkbcommon.org/download/libxkbcommon-${LIBXKBCOMMON_VERSION}.tar.xz"
+    # Layer 4 — xcb-util collection
+    [xcb-util-${XCB_UTIL_VERSION}.tar.xz]="https://xorg.freedesktop.org/archive/individual/xcb/xcb-util-${XCB_UTIL_VERSION}.tar.xz"
+    [xcb-util-image-${XCB_UTIL_IMAGE_VERSION}.tar.xz]="https://xorg.freedesktop.org/archive/individual/xcb/xcb-util-image-${XCB_UTIL_IMAGE_VERSION}.tar.xz"
+    [xcb-util-keysyms-${XCB_UTIL_KEYSYMS_VERSION}.tar.xz]="https://xorg.freedesktop.org/archive/individual/xcb/xcb-util-keysyms-${XCB_UTIL_KEYSYMS_VERSION}.tar.xz"
+    [xcb-util-wm-${XCB_UTIL_WM_VERSION}.tar.xz]="https://xorg.freedesktop.org/archive/individual/xcb/xcb-util-wm-${XCB_UTIL_WM_VERSION}.tar.xz"
+    [xcb-util-renderutil-${XCB_UTIL_RENDERUTIL_VERSION}.tar.xz]="https://xorg.freedesktop.org/archive/individual/xcb/xcb-util-renderutil-${XCB_UTIL_RENDERUTIL_VERSION}.tar.xz"
+    [xcb-util-cursor-${XCB_UTIL_CURSOR_VERSION}.tar.xz]="https://xorg.freedesktop.org/archive/individual/xcb/xcb-util-cursor-${XCB_UTIL_CURSOR_VERSION}.tar.xz"
+    # Layer 5 — keymap data
+    [xkeyboard-config-${XKEYBOARD_CONFIG_VERSION}.tar.xz]="https://www.x.org/releases/individual/data/xkeyboard-config/xkeyboard-config-${XKEYBOARD_CONFIG_VERSION}.tar.xz"
+
+    # --- Phase 8 / Round 3 — xorg-server + drivers ---
+    [eudev-${EUDEV_VERSION}.tar.gz]="https://github.com/eudev-project/eudev/releases/download/v${EUDEV_VERSION}/eudev-${EUDEV_VERSION}.tar.gz"
+    [libdrm-${LIBDRM_VERSION}.tar.xz]="https://dri.freedesktop.org/libdrm/libdrm-${LIBDRM_VERSION}.tar.xz"
+    [libpciaccess-${LIBPCIACCESS_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libpciaccess-${LIBPCIACCESS_VERSION}.tar.xz"
+    [libXfont2-${LIBXFONT2_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXfont2-${LIBXFONT2_VERSION}.tar.xz"
+    [libfontenc-${LIBFONTENC_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libfontenc-${LIBFONTENC_VERSION}.tar.xz"
+    [libxshmfence-${LIBXSHMFENCE_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libxshmfence-${LIBXSHMFENCE_VERSION}.tar.xz"
+    [libXxf86vm-${LIBXXF86VM_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXxf86vm-${LIBXXF86VM_VERSION}.tar.xz"
+    # libepoxy stopped publishing release tarballs after moving to
+    # gitlab; fall back to the github archive of the git tag.
+    [libepoxy-${LIBEPOXY_VERSION}.tar.gz]="https://github.com/anholt/libepoxy/archive/refs/tags/${LIBEPOXY_VERSION}.tar.gz"
+    [pixman-${PIXMAN_VERSION}.tar.gz]="https://cairographics.org/releases/pixman-${PIXMAN_VERSION}.tar.gz"
+    [libxkbfile-${LIBXKBFILE_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libxkbfile-${LIBXKBFILE_VERSION}.tar.xz"
+    [libevdev-${LIBEVDEV_VERSION}.tar.xz]="https://www.freedesktop.org/software/libevdev/libevdev-${LIBEVDEV_VERSION}.tar.xz"
+    [mtdev-${MTDEV_VERSION}.tar.bz2]="https://bitmath.org/code/mtdev/mtdev-${MTDEV_VERSION}.tar.bz2"
+    # GitLab redirects .tar.xz to an auth page; .tar.gz works directly.
+    [libinput-${LIBINPUT_VERSION}.tar.gz]="https://gitlab.freedesktop.org/libinput/libinput/-/archive/${LIBINPUT_VERSION}/libinput-${LIBINPUT_VERSION}.tar.gz"
+    [mesa-${MESA_VERSION}.tar.xz]="https://archive.mesa3d.org/mesa-${MESA_VERSION}.tar.xz"
+    [xorg-server-${XORG_SERVER_VERSION}.tar.xz]="https://www.x.org/releases/individual/xserver/xorg-server-${XORG_SERVER_VERSION}.tar.xz"
+    [xf86-input-libinput-${XF86_INPUT_LIBINPUT_VERSION}.tar.xz]="https://www.x.org/releases/individual/driver/xf86-input-libinput-${XF86_INPUT_LIBINPUT_VERSION}.tar.xz"
+
+    # --- Phase 8 / Round 4 — GTK4 stack ---
+    [glib-${GLIB_VERSION}.tar.xz]="https://download.gnome.org/sources/glib/$(echo ${GLIB_VERSION}|cut -d. -f1-2)/glib-${GLIB_VERSION}.tar.xz"
+    [gobject-introspection-${GOBJECT_INTROSPECTION_VERSION}.tar.xz]="https://download.gnome.org/sources/gobject-introspection/$(echo ${GOBJECT_INTROSPECTION_VERSION}|cut -d. -f1-2)/gobject-introspection-${GOBJECT_INTROSPECTION_VERSION}.tar.xz"
+    [harfbuzz-${HARFBUZZ_VERSION}.tar.xz]="https://github.com/harfbuzz/harfbuzz/releases/download/${HARFBUZZ_VERSION}/harfbuzz-${HARFBUZZ_VERSION}.tar.xz"
+    [cairo-${CAIRO_VERSION}.tar.xz]="https://cairographics.org/releases/cairo-${CAIRO_VERSION}.tar.xz"
+    [pango-${PANGO_VERSION}.tar.xz]="https://download.gnome.org/sources/pango/$(echo ${PANGO_VERSION}|cut -d. -f1-2)/pango-${PANGO_VERSION}.tar.xz"
+    [gdk-pixbuf-${GDK_PIXBUF_VERSION}.tar.xz]="https://download.gnome.org/sources/gdk-pixbuf/$(echo ${GDK_PIXBUF_VERSION}|cut -d. -f1-2)/gdk-pixbuf-${GDK_PIXBUF_VERSION}.tar.xz"
+    [graphene-${GRAPHENE_VERSION}.tar.xz]="https://download.gnome.org/sources/graphene/$(echo ${GRAPHENE_VERSION}|cut -d. -f1-2)/graphene-${GRAPHENE_VERSION}.tar.xz"
+    [shared-mime-info-${SHARED_MIME_INFO_VERSION}.tar.xz]="https://gitlab.freedesktop.org/xdg/shared-mime-info/-/archive/${SHARED_MIME_INFO_VERSION}/shared-mime-info-${SHARED_MIME_INFO_VERSION}.tar.xz"
+    [hicolor-icon-theme-${HICOLOR_ICON_THEME_VERSION}.tar.xz]="https://icon-theme.freedesktop.org/releases/hicolor-icon-theme-${HICOLOR_ICON_THEME_VERSION}.tar.xz"
+    # adwaita-icon-theme uses single-major-component path under
+    # download.gnome.org (47, not 47.0) — unlike glib/gtk (2.82, 4.16).
+    [adwaita-icon-theme-${ADWAITA_ICON_THEME_VERSION}.tar.xz]="https://download.gnome.org/sources/adwaita-icon-theme/$(echo ${ADWAITA_ICON_THEME_VERSION}|cut -d. -f1)/adwaita-icon-theme-${ADWAITA_ICON_THEME_VERSION}.tar.xz"
+    [gtk-${GTK4_VERSION}.tar.xz]="https://download.gnome.org/sources/gtk/$(echo ${GTK4_VERSION}|cut -d. -f1-2)/gtk-${GTK4_VERSION}.tar.xz"
+
+    # --- Phase 8 / Round 5 — audio stack ---
+    [lua-${LUA_VERSION}.tar.gz]="https://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz"
+    [alsa-lib-${ALSA_LIB_VERSION}.tar.bz2]="https://www.alsa-project.org/files/pub/lib/alsa-lib-${ALSA_LIB_VERSION}.tar.bz2"
+    [pipewire-${PIPEWIRE_VERSION}.tar.gz]="https://gitlab.freedesktop.org/pipewire/pipewire/-/archive/${PIPEWIRE_VERSION}/pipewire-${PIPEWIRE_VERSION}.tar.gz"
+    [wireplumber-${WIREPLUMBER_VERSION}.tar.gz]="https://gitlab.freedesktop.org/pipewire/wireplumber/-/archive/${WIREPLUMBER_VERSION}/wireplumber-${WIREPLUMBER_VERSION}.tar.gz"
+
+    # NOTE: Phase 9 (i3 + i3More) packages are NOT fetched here. i3 and
+    # i3More are built externally via i3More's own Dockerfile.i3 +
+    # justfile pipeline. 17-stage-sysroot.sh copies their artifacts
+    # straight into the WriteOnce sysroot. See versions.env header
+    # comment for Phase 9 + docs/learning/phase-9-desktop-bringup.md.
+
+    # --- Phase 8 / Round 6 — network stack ---
+    [ell-${ELL_VERSION}.tar.xz]="https://mirrors.edge.kernel.org/pub/linux/libs/ell/ell-${ELL_VERSION}.tar.xz"
+    [iwd-${IWD_VERSION}.tar.xz]="https://mirrors.edge.kernel.org/pub/linux/network/wireless/iwd-${IWD_VERSION}.tar.xz"
+    [iproute2-${IPROUTE2_VERSION}.tar.xz]="https://mirrors.edge.kernel.org/pub/linux/utils/net/iproute2/iproute2-${IPROUTE2_VERSION}.tar.xz"
+    [iputils-${IPUTILS_VERSION}.tar.gz]="https://github.com/iputils/iputils/archive/refs/tags/${IPUTILS_VERSION}.tar.gz"
+    [dhcpcd-${DHCPCD_VERSION}.tar.xz]="https://github.com/NetworkConfiguration/dhcpcd/releases/download/v${DHCPCD_VERSION}/dhcpcd-${DHCPCD_VERSION}.tar.xz"
 )
 
 # Packages whose upstreams publish a detached GPG signature alongside the tarball.
@@ -58,6 +166,14 @@ GPG_SIGNED=(
     binutils gcc glibc mpfr gmp mpc
     linux
     m4 bash coreutils diffutils findutils gawk grep gzip make sed tar xz
+    # Phase 8 base substrate — most freedesktop / X.Org / GNOME projects
+    # publish detached signatures, though the URL extension varies (.sig
+    # vs .asc). The fetch loop below tries both.
+    expat libpng libjpeg-turbo freetype fontconfig libxml2 dbus
+    Linux   # matches "Linux-PAM-*" via the basename prefix
+    # Phase 8 round 6 — kernel.org-hosted network stack pieces are signed.
+    # iputils (github) + dhcpcd (github) are SHA-only.
+    ell iwd iproute2
 )
 
 # ---- import keys from build/keys/ into project-local keyring ----------------
@@ -80,7 +196,14 @@ for base in "${!URLS[@]}"; do
     # 1. download (if missing)
     if [[ ! -f "$out" ]]; then
         echo ">>> fetching $base"
-        wget --quiet --show-progress -O "$out.part" "$url"
+        # --tries=2 + --timeout=15 fail fast on 404 / dead host; with --quiet
+        # alone wget retries 20 times with backoff and hangs for minutes.
+        if ! wget --tries=2 --timeout=15 --quiet --show-progress \
+                  -O "$out.part" "$url"; then
+            echo "    ERROR: wget failed for $url" >&2
+            rm -f "$out.part"
+            continue   # keep going so we surface ALL bad URLs in one run
+        fi
         mv "$out.part" "$out"
     fi
 
@@ -95,9 +218,17 @@ for base in "${!URLS[@]}"; do
         esac
         sig="$SOURCES/$base.sig"
         if [[ ! -f "$sig" ]]; then
-            wget --quiet -O "$sig.part" "$sig_url" 2>/dev/null \
-                && mv "$sig.part" "$sig" \
-                || { echo "    (no signature published for $pkg, skipping GPG)"; sig=""; }
+            # Try .sig first; if 404, fall back to .asc (many GNOME /
+            # GitHub-release upstreams use .asc instead of .sig).
+            if wget --quiet -O "$sig.part" "$sig_url" 2>/dev/null; then
+                mv "$sig.part" "$sig"
+            elif wget --quiet -O "$sig.part" "${url}.asc" 2>/dev/null; then
+                mv "$sig.part" "$sig"
+            else
+                rm -f "$sig.part"
+                echo "    (no signature published for $pkg, skipping GPG)"
+                sig=""
+            fi
         fi
         if [[ -n "$sig" && -f "$sig" ]]; then
             # The kernel's .sign is over the *decompressed* tarball; everyone

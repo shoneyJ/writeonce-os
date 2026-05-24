@@ -1,0 +1,37 @@
+# /etc/writeonce/writeonce.toml
+#
+# System-level config consumed by the Rust crates that own the boot
+# path. Each crate documents the keys it reads.
+
+[pid1]
+# Seconds to wait between SIGTERM and SIGKILL during shutdown.
+shutdown-grace-seconds = 10
+
+# When SIGTERM is received, reboot vs power-off vs halt. PID 1 maps:
+#   SIGTERM  → LINUX_REBOOT_CMD_RESTART
+#   SIGUSR1  → LINUX_REBOOT_CMD_POWER_OFF
+#   SIGUSR2  → LINUX_REBOOT_CMD_HALT
+# This config affects only the default if no signal is overridden.
+default-shutdown-action = "reboot"
+
+[svc]
+# Where to load service-unit TOMLs from.
+services-dir = "/etc/writeonce/services"
+# wo-ctl Unix-socket control plane path.
+control-socket = "/run/writeonce-svc.sock"
+# Default target when supervisor starts.
+default-target = "graphical.target"
+
+[login]
+# Path to the PAM service file. Matches the basename of
+# /etc/pam.d/writeonce-login.
+pam-service = "writeonce-login"
+# Command to exec after PAM_SUCCESS + CreateSession. The shell variant
+# is "/bin/bash --login" if you want a CLI session; "/usr/bin/startx"
+# for the graphical desktop.
+post-login-exec = "/usr/bin/startx"
+
+[logind]
+# How long to wait for sessions to terminate before forcing close on
+# shutdown. (Not yet wired through; placeholder for Round 2f.)
+session-stop-timeout-sec = 10

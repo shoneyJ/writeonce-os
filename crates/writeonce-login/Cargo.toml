@@ -1,0 +1,24 @@
+[package]
+name        = "writeonce-login"
+version     = "0.1.0"
+description = "WriteOnce OS — PAM-based console login (Phase 9)."
+
+edition      .workspace = true
+license      .workspace = true
+authors      .workspace = true
+rust-version .workspace = true
+
+# NOTE: this crate dynamically links against libpam (PAM dlopens .so
+# modules at runtime and is fundamentally a glibc-world component, so
+# we cannot build it static-musl like the other crates).
+#
+# Build-time dep:   libpam0g-dev — provided by the wo-builder container
+#                   image (build/Containerfile). DO NOT install on the
+#                   host. Compile with:
+#                       ./build/in-container.sh cargo build -p writeonce-login --release
+# Runtime dep on target: libpam0g (Phase 8 sysroot ships it).
+
+[dependencies]
+libc  .workspace = true
+serde .workspace = true
+toml  .workspace = true
