@@ -16,6 +16,11 @@ rust-version .workspace = true
 
 [dependencies]
 uefi.workspace = true
+# uefi-raw gives us the raw LoadedImageProtocol layout so we can write
+# device_handle directly after LoadImage(FromBuffer) — the uefi-rs
+# wrapper doesn't expose a setter. Required for the kernel's EFI stub
+# to find initrd= relative to our boot device.
+uefi-raw = "0.8"
 log .workspace = true
 
 [[bin]]
