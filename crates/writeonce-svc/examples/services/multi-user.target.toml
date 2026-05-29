@@ -1,15 +1,23 @@
 # /etc/writeonce/services/multi-user.target.toml
 #
-# Synthetic target — the "fully booted, non-graphical" milestone.
-# Units that should be up before the user can log in declare
-# `wanted-by = ["multi-user.target"]`.
+# Synthetic target — "console + everything in /etc/writeonce/enabled.d/".
+# Targets enabled.d entries via reverse-dependency: each stub file in
+# enabled.d injects an extra `wanted-by = ["multi-user.target"]` edge
+# at supervisor startup (see writeonce-svc/src/config.rs::load_enabled).
+#
+# By default, default.target does NOT pull in multi-user.target —
+# the boot path stops at console.target (login prompt). The
+# installer's headless profile rewrites default.target to require
+# multi-user.target so optional services (iwd, dhcpcd, …) come up
+# automatically at boot for SSH-only setups.
 
 [unit]
-description = "Multi-user system (non-graphical)"
-after       = ["sysinit.target"]
+description = "Multi-user system (console + enabled services)"
+requires    = ["console.target"]
+after       = ["console.target"]
 
 [service]
-type        = "oneshot"
-exec-start  = "/bin/true"
+type              = "oneshot"
+exec-start        = "/bin/true"
 remain-after-exit = true
-slice       = "system.slice"
+slice             = "system.slice"

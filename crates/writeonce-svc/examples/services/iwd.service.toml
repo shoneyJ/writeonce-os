@@ -5,17 +5,24 @@
 
 [unit]
 description = "iNet Wireless Daemon"
-after       = ["dbus.service"]
+after       = ["dbus.service", "writeonce-modules-load.service"]
 requires    = ["dbus.service"]
+wants       = ["writeonce-modules-load.service"]
 
 [service]
-type        = "simple"
-exec-start  = "/usr/libexec/iwd"
-restart     = "on-failure"
-restart-sec = "5s"
-user        = "root"
-group       = "root"
-slice       = "system.slice"
+type                      = "simple"
+exec-start                = "/usr/libexec/iwd"
+restart                   = "on-failure"
+restart-sec               = "5s"
+# Surrender after 3 failures within 30 s rather than respawning forever
+# (walks the kernel PID counter; see docs/learning/t450-boot-debugging.md).
+start-limit-burst         = 3
+start-limit-interval-sec  = "30s"
+user                      = "root"
+group                     = "root"
+slice                     = "system.slice"
 
-[install]
-wanted-by   = ["multi-user.target"]
+# [install] omitted — iwd is opt-in. Users enable via
+# `wo-ctl enable iwd.service`, which writes
+# /etc/writeonce/enabled.d/iwd.service.toml. Installer's headless
+# profile pre-enables this for SSH-only setups.

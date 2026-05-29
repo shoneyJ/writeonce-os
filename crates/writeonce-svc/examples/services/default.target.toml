@@ -1,4 +1,16 @@
+# /etc/writeonce/services/default.target.toml
+#
+# The boot target. Points at console.target — the bare minimum
+# chain (sysinit → dbus → logind → writeonce-login). Optional
+# services live downstream via /etc/writeonce/enabled.d/ and the
+# multi-user.target plan; they're only pulled in when the user
+# (or installer for a headless profile) opts in.
+#
+# Override at the writeonce-svc CLI with `--default-target
+# multi-user.target` if you want enabled.d entries to fire at
+# boot. The installer's headless profile does this automatically.
+
 [unit]
-description = "Default supervisor target — equivalent to multi-user"
-requires    = ["multi-user.target"]
-after       = ["multi-user.target"]
+description = "Default supervisor target — console login reachable"
+requires    = ["console.target"]
+after       = ["console.target"]

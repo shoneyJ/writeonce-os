@@ -18,8 +18,6 @@ pub fn parse_duration(s: &str) -> Option<Duration> {
     let s = s.trim();
     if let Some(n) = s.strip_suffix("ms") {
         n.parse::<u64>().ok().map(Duration::from_millis)
-    } else if let Some(n) = s.strip_suffix("ms") {
-        n.parse::<u64>().ok().map(Duration::from_millis)
     } else if let Some(n) = s.strip_suffix('h') {
         n.parse::<u64>().ok().map(|v| Duration::from_secs(v * 3600))
     } else if let Some(n) = s.strip_suffix('m') {
@@ -47,6 +45,14 @@ mod duration_tests {
         assert_eq!(parse_duration("100ms"), Some(Duration::from_millis(100)));
         assert_eq!(parse_duration("2m"),    Some(Duration::from_secs(120)));
         assert_eq!(parse_duration("1h"),    Some(Duration::from_secs(3600)));
+    }
+
+    #[test]
+    fn duration_ms_disambiguates_from_minutes_and_seconds() {
+        // "ms" must win over the single-char 's'/'m' suffixes.
+        assert_eq!(parse_duration("2ms"), Some(Duration::from_millis(2)));
+        assert_eq!(parse_duration("2m"),  Some(Duration::from_secs(120)));
+        assert_eq!(parse_duration("2s"),  Some(Duration::from_secs(2)));
     }
 
     #[test]
@@ -99,6 +105,18 @@ pub struct ServiceSection {
     /// Duration strings (e.g. `"5s"`, `"30s"`). Parsed in Round 4.
     #[serde(default = "default_restart_sec")]
     pub restart_sec:       String,
+    /// systemd-equivalent: StartLimitBurst. After this many restart
+    /// attempts inside `start_limit_interval_sec`, the unit is marked
+    /// Failed and the supervisor stops scheduling further restarts.
+    /// Prevents tight-loop respawn of a chronically-failing service
+    /// from walking the kernel PID counter.
+    #[serde(default = "default_start_limit_burst")]
+    pub start_limit_burst:        u32,
+    /// systemd-equivalent: StartLimitIntervalSec. Sliding window over
+    /// which `start_limit_burst` failures are counted. Same humantime
+    /// syntax as `restart_sec`.
+    #[serde(default = "default_start_limit_interval_sec")]
+    pub start_limit_interval_sec: String,
     #[serde(default = "default_timeout_start_sec")]
     pub timeout_start_sec: String,
     #[serde(default = "default_timeout_stop_sec")]
@@ -136,6 +154,14 @@ pub enum RestartPolicy { No, Always, OnFailure, OnAbnormal }
 fn default_service_type()     -> ServiceType   { ServiceType::Simple }
 fn default_restart()          -> RestartPolicy { RestartPolicy::No }
 fn default_restart_sec()      -> String { "5s".into() }
+// Math behind these defaults: with `restart_sec = 5s`, a failing
+// service respawns every 5s. In a 30s window, the sliding history
+// fills to 6 entries before the oldest falls off. burst=3 fires
+// after the 3rd attempt within ~15s — fast surrender, no PID walk.
+// The previous defaults (5 / 10s) were mathematically unreachable
+// when restart_sec >= interval / burst.
+fn default_start_limit_burst()        -> u32    { 3 }
+fn default_start_limit_interval_sec() -> String { "30s".into() }
 fn default_timeout_start_sec() -> String { "30s".into() }
 fn default_timeout_stop_sec() -> String { "10s".into() }
 fn default_user()             -> String { "root".into() }

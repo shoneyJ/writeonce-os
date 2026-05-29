@@ -1,0 +1,32 @@
+# /etc/writeonce/services/writeonce-bootstrap.service.toml
+#
+# Pre-service plumbing — owns every "make sure X exists with the
+# right perms before any real service starts" task: /etc/machine-id,
+# /run/* subdirs, /tmp mode, /etc/mtab compat symlink, etc.
+#
+# Runs after sysinit.target (so /proc, /sys, /dev, /run, cgroup are
+# mounted) and BEFORE dbus.service (which needs machine-id + /run/dbus
+# to exist). Oneshot with remain-after-exit so the supervisor's
+# ordering engine sees it as a stable predecessor.
+#
+# When something new is missing pre-service, fix it in
+# /usr/sbin/writeonce-bootstrap — not in writeonce-pid1, not in
+# writeonce-installer, not in another service unit. ONE owner.
+
+[unit]
+description = "Pre-service plumbing (machine-id, /run dirs, tmp perms)"
+after       = ["sysinit.target"]
+before      = ["dbus.service"]
+requires    = ["sysinit.target"]
+
+[service]
+type              = "oneshot"
+exec-start        = "/usr/sbin/writeonce-bootstrap"
+remain-after-exit = true
+user              = "root"
+group             = "root"
+slice             = "system.slice"
+
+[install]
+# Pulled in by console.target — same chain as dbus / logind / login.
+wanted-by         = ["console.target"]

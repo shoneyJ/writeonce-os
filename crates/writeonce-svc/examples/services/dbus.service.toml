@@ -6,7 +6,11 @@
 
 [unit]
 description = "D-Bus system message bus"
-after       = ["sysinit.target"]
+# writeonce-bootstrap creates /etc/machine-id and /run/dbus before
+# we start — both are dbus-daemon prerequisites. See
+# plan/writeonce-svc-fix/escape-the-loop.md.
+after       = ["sysinit.target", "writeonce-bootstrap.service"]
+requires    = ["writeonce-bootstrap.service"]
 
 [service]
 type        = "simple"
@@ -19,4 +23,7 @@ group       = "messagebus"
 slice       = "system.slice"
 
 [install]
-wanted-by   = ["multi-user.target"]
+# dbus is part of the bare-minimum boot chain — logind + login both
+# require it. Pulled in by console.target (the boot target), not by
+# multi-user.target (which is the opt-in superset).
+wanted-by   = ["console.target"]

@@ -120,6 +120,28 @@ impl UnitRegistry {
 
     pub fn len(&self) -> usize { self.units.len() }
 
+    /// Inject a virtual `[install] wanted-by` edge after construction
+    /// — `unit_name` is treated as if it had declared `wanted-by =
+    /// [target_name]`. Used by the enabled.d loader (see
+    /// [`crate::enabled`]) so opt-in services can be pulled in by
+    /// `multi-user.target` without their unit file claiming the
+    /// install link. Both names must already be loaded.
+    pub fn add_wanted_by(&mut self, target_name: &str, unit_name: &str)
+        -> Result<(), String>
+    {
+        let target_id = self.by_name.get(target_name)
+            .copied()
+            .ok_or_else(|| format!("unknown target: {target_name}"))?;
+        let unit_id = self.by_name.get(unit_name)
+            .copied()
+            .ok_or_else(|| format!("unknown unit: {unit_name}"))?;
+        let entry = self.extra_wants.entry(target_id).or_default();
+        if !entry.contains(&unit_id) {
+            entry.push(unit_id);
+        }
+        Ok(())
+    }
+
     /// Returns the effective `requirement` edges (`Wants ∪ Requires ∪ BindsTo`)
     /// out of `id`, after applying reverse-dependency lift.
     fn requirement_targets(&self, id: UnitId) -> Vec<UnitId> {
@@ -134,6 +156,26 @@ impl UnitRegistry {
         if let Some(extra) = self.extra_wants.get(&id) {
             for &t in extra { out.push(t); }
         }
+        if let Some(extra) = self.extra_requires.get(&id) {
+            for &t in extra { out.push(t); }
+        }
+        out.sort_by_key(|u| u.0);
+        out.dedup();
+        out
+    }
+
+    /// Effective **hard** requirement edges out of `id`: `Requires ∪ BindsTo`
+    /// plus lifted `required_by` — excluding soft `Wants`/`wanted_by`. Used by
+    /// the supervisor to decide whether a unit must be skipped because a hard
+    /// dependency has already failed (a soft `Wants` failure is tolerated).
+    pub fn hard_requirement_targets(&self, id: UnitId) -> Vec<UnitId> {
+        let unit = self.get(id);
+        let mut out: Vec<UnitId> = Vec::new();
+        let push_named = |name: &String, out: &mut Vec<UnitId>| {
+            if let Some(&t) = self.by_name.get(name) { out.push(t); }
+        };
+        for n in &unit.file.unit.requires { push_named(n, &mut out); }
+        for n in &unit.file.unit.binds_to { push_named(n, &mut out); }
         if let Some(extra) = self.extra_requires.get(&id) {
             for &t in extra { out.push(t); }
         }
@@ -346,6 +388,8 @@ mod tests {
             exec_reload: String::new(),
             restart: crate::config::RestartPolicy::No,
             restart_sec: "5s".into(),
+            start_limit_burst:        3,
+            start_limit_interval_sec: "30s".into(),
             timeout_start_sec: "30s".into(),
             timeout_stop_sec:  "10s".into(),
             user:  "root".into(),
@@ -407,6 +451,26 @@ mod tests {
         let idx_dbus  = names.iter().position(|n| *n == "dbus.service").unwrap();
         let idx_getty = names.iter().position(|n| *n == "getty@tty1.service").unwrap();
         assert!(idx_dbus < idx_getty, "dbus must precede getty in topo order");
+    }
+
+    #[test]
+    fn hard_requirement_targets_excludes_wants() {
+        let units = vec![
+            mk_target("a.target", UnitSection {
+                requires: vec!["b.target".into()],
+                wants:    vec!["c.target".into()],
+                ..Default::default()
+            }),
+            mk_target("b.target", UnitSection::default()),
+            mk_target("c.target", UnitSection::default()),
+        ];
+        let reg = UnitRegistry::from_loaded(units);
+        let a = reg.lookup("a.target").unwrap();
+        let b = reg.lookup("b.target").unwrap();
+        let c = reg.lookup("c.target").unwrap();
+        let hard = reg.hard_requirement_targets(a);
+        assert!(hard.contains(&b),  "requires= b must be a hard requirement");
+        assert!(!hard.contains(&c), "wants= c must NOT be a hard requirement");
     }
 
     #[test]

@@ -7,7 +7,7 @@
 
 [unit]
 description = "Console login on tty1"
-after       = ["multi-user.target", "logind.service"]
+after       = ["logind.service"]
 requires    = ["logind.service"]
 
 [service]
@@ -21,4 +21,7 @@ group       = "root"
 slice       = "system.slice"
 
 [install]
-wanted-by   = ["graphical.target"]
+# writeonce-login is the end of the bare-minimum boot chain — it
+# IS the visible "boot completed" milestone (login prompt on tty1).
+# Pulled in by console.target so it runs unconditionally at boot.
+wanted-by   = ["console.target"]

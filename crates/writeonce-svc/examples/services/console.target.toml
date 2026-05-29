@@ -1,0 +1,40 @@
+# /etc/writeonce/services/console.target.toml
+#
+# The bare-minimum boot. Pulls in only what's needed for a working
+# login prompt: sysinit (filesystems mounted), dbus (system bus),
+# logind (session bookkeeping), writeonce-login (the actual prompt
+# on tty1).
+#
+# Network, wifi, audio, modules-load and every other optional layer
+# are NOT pulled in here. Users enable them post-login via
+# `wo-ctl enable <unit>`, which writes a stub to
+# `/etc/writeonce/enabled.d/<unit>.toml`. The supervisor honours
+# those stubs at the next boot (and immediately on the running
+# system when wo-ctl is used).
+#
+# `default.target` requires this target, so it's the unconditional
+# boot path. multi-user.target also lives downstream of this — it
+# captures "console.target reached + everything in enabled.d/".
+
+[unit]
+description = "Console login reachable"
+requires    = [
+    "sysinit.target",
+    "writeonce-bootstrap.service",
+    "dbus.service",
+    "logind.service",
+    "writeonce-login.service",
+]
+after       = [
+    "sysinit.target",
+    "writeonce-bootstrap.service",
+    "dbus.service",
+    "logind.service",
+    "writeonce-login.service",
+]
+
+[service]
+type              = "oneshot"
+exec-start        = "/bin/true"
+remain-after-exit = true
+slice             = "system.slice"

@@ -13,6 +13,7 @@
 pub mod cgroup;
 pub mod config;
 pub mod control;
+pub mod enabled;
 pub mod graph;
 pub mod signal;
 pub mod spawn;

@@ -1,0 +1,27 @@
+# /etc/writeonce/services/writeonce-modules-load.service.toml
+#
+# Reads /etc/modules-load.d/*.conf at boot and modprobes each listed
+# kernel module. Equivalent role to systemd-modules-load.service.
+#
+# Pulled in by sysinit.target so it completes before any service that
+# might need wifi/audio/storage modules loaded (iwd, pipewire, ...).
+# iwd.service additionally lists this as `after` to remove any doubt
+# about ordering when both are pulled in by multi-user.target.
+
+[unit]
+description = "Load kernel modules listed in /etc/modules-load.d/"
+after       = ["sysinit.target"]
+
+[service]
+type              = "oneshot"
+exec-start        = "/usr/sbin/wo-modules-load"
+remain-after-exit = true
+user              = "root"
+group             = "root"
+slice             = "system.slice"
+
+# [install] omitted — modules-load is opt-in (the only required
+# module set is the wifi driver, which is itself opt-in via iwd).
+# Users enable via `wo-ctl enable writeonce-modules-load.service`,
+# which also auto-enables when iwd is enabled (see
+# crates/writeonce-svc/src/wants_dep).

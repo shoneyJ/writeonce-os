@@ -18,4 +18,6 @@ group       = "root"
 slice       = "system.slice"
 
 [install]
-wanted-by   = ["multi-user.target"]
+# logind is part of the bare-minimum boot chain — writeonce-login
+# requires it for session creation. Pulled in by console.target.
+wanted-by   = ["console.target"]

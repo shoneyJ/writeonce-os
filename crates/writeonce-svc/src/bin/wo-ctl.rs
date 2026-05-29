@@ -14,6 +14,11 @@
 //!     start    <unit>                   start a unit (and its closure)
 //!     stop     <unit>                   stop a unit (and its dependents)
 //!     restart  <unit>                   stop then start
+//!     enable   <unit>                   persist (write enabled.d stub) + start
+//!     disable  <unit>                   stop + remove enabled.d stub
+//!     enabled                           list units persisted in enabled.d
+//!     journal  <unit> [lines]           tail the unit's stdout/stderr log
+//!     cgroups                           show the wo.slice cgroup tree + PIDs
 //!     shutdown                          tell the supervisor to exit
 
 use std::io::{BufRead, BufReader, Write};
@@ -23,7 +28,18 @@ use std::process;
 const DEFAULT_SOCKET: &str = "/run/writeonce/control.sock";
 
 fn usage() -> ! {
-    eprintln!("usage: wo-ctl [--socket PATH] <list | status <unit> | start <unit> | stop <unit> | restart <unit> | shutdown>");
+    eprintln!("usage: wo-ctl [--socket PATH] <command> [<unit>]");
+    eprintln!("  list                       show every unit + state");
+    eprintln!("  status   <unit>            show details for one unit");
+    eprintln!("  start    <unit>            start a unit (transient)");
+    eprintln!("  stop     <unit>            stop a unit (transient)");
+    eprintln!("  restart  <unit>            stop then start");
+    eprintln!("  enable   <unit>            persist + start (survives reboot)");
+    eprintln!("  disable  <unit>            stop + remove persistence");
+    eprintln!("  enabled                    list persisted units");
+    eprintln!("  journal  <unit> [lines]    tail the unit's stdout/stderr log");
+    eprintln!("  cgroups                    show the wo.slice cgroup tree + PIDs");
+    eprintln!("  shutdown                   tell the supervisor to exit");
     process::exit(2);
 }
 

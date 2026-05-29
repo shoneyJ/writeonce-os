@@ -14,6 +14,13 @@
 //!   START   <unit>          → start the unit (and its closure)
 //!   STOP    <unit>          → stop the unit (and units depending on it)
 //!   RESTART <unit>          → stop then start
+//!   ENABLE  <unit>          → persist (write enabled.d/<unit>.toml)
+//!                              + register virtual wanted-by(multi-user.target)
+//!                              + start the unit now (--now semantics)
+//!   DISABLE <unit>          → stop the unit + remove enabled.d/<unit>.toml
+//!   ENABLED                 → list units currently enabled via enabled.d
+//!   JOURNAL <unit> [lines]  → tail the unit's captured stdout/stderr log
+//!   CGROUPS                 → list the wo.slice cgroup tree + each cgroup's PIDs
 //!   SHUTDOWN                → initiate orderly supervisor shutdown
 //! ```
 //!
@@ -25,6 +32,7 @@ use std::os::fd::{AsRawFd, RawFd};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 
+use crate::enabled;
 use crate::state::SupervisorState;
 
 pub const DEFAULT_SOCKET: &str = "/run/writeonce/control.sock";
@@ -105,6 +113,11 @@ fn handle_one(stream: UnixStream, state: &mut SupervisorState) -> bool {
         "START"    => start(&stream, state, parts.get(1).copied()),
         "STOP"     => stop(&stream, state, parts.get(1).copied()),
         "RESTART"  => restart(&stream, state, parts.get(1).copied()),
+        "ENABLE"   => enable(&stream, state, parts.get(1).copied()),
+        "DISABLE"  => disable(&stream, state, parts.get(1).copied()),
+        "ENABLED"  => list_enabled(&stream, state),
+        "JOURNAL"  => journal(&stream, state, parts.get(1).copied(), parts.get(2).copied()),
+        "CGROUPS"  => cgroups(&stream),
         "SHUTDOWN" => {
             let _ = writeln!(&stream, "writeonce-svc: shutdown initiated");
             shutdown_requested = true;
@@ -166,4 +179,122 @@ fn restart(mut stream: &UnixStream, state: &mut SupervisorState, name: Option<&s
     let _ = writeln!(stream, "writeonce-svc: restarting {name}");
     state.stop_unit(name)?;
     state.start_named(name)
+}
+
+/// ENABLE = persist (write enabled.d stub) + register virtual
+/// `wanted-by = [multi-user.target]` + start the unit now.
+/// systemctl-equivalent: `systemctl enable --now <unit>`.
+///
+/// The persist step happens FIRST so the enable survives a crash
+/// between persist and start. If the unit doesn't exist in the
+/// registry we still write the stub — restarting the supervisor
+/// later will surface the broken stub at load time.
+fn enable(mut stream: &UnixStream, state: &mut SupervisorState, name: Option<&str>) -> Result<(), String> {
+    let name = name.ok_or("ENABLE requires a unit name")?;
+    if state.registry.lookup(name).is_none() {
+        return Err(format!("unknown unit: {name}"));
+    }
+    let dir = state.enabled_d.clone();
+    let path = enabled::enable(&dir, name)
+        .map_err(|e| format!("write enabled.d stub: {e}"))?;
+    writeln!(stream, "writeonce-svc: enabled {name} → {}", path.display())
+        .map_err(|e| e.to_string())?;
+    state.registry.add_wanted_by("multi-user.target", name)?;
+    writeln!(stream, "writeonce-svc: starting {name}").map_err(|e| e.to_string())?;
+    state.start_named(name)
+}
+
+/// DISABLE = stop the unit + remove the stub. Inverse of ENABLE.
+/// systemctl-equivalent: `systemctl disable --now <unit>`.
+fn disable(mut stream: &UnixStream, state: &mut SupervisorState, name: Option<&str>) -> Result<(), String> {
+    let name = name.ok_or("DISABLE requires a unit name")?;
+    // Stop first so an in-flight failure of `stop_unit` doesn't leave
+    // us with a disabled-but-still-running service.
+    writeln!(stream, "writeonce-svc: stopping {name}").map_err(|e| e.to_string())?;
+    // Lookup is allowed to fail for stop — the unit may not be loaded
+    // (e.g. user uninstalled and now wants to clean up the stub).
+    let _ = state.stop_unit(name);
+    let dir = state.enabled_d.clone();
+    let removed = enabled::disable(&dir, name)
+        .map_err(|e| format!("remove enabled.d stub: {e}"))?;
+    if removed {
+        writeln!(stream, "writeonce-svc: removed enabled.d stub for {name}")
+            .map_err(|e| e.to_string())?;
+    } else {
+        writeln!(stream, "writeonce-svc: no enabled.d stub for {name}")
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// JOURNAL <unit> [lines] = stream the tail of the unit's captured
+/// stdout/stderr from `<log_dir>/<unit>.log` (default 50 lines).
+fn journal(mut stream: &UnixStream, state: &SupervisorState, name: Option<&str>, lines: Option<&str>)
+    -> Result<(), String>
+{
+    let name = name.ok_or("JOURNAL requires a unit name")?;
+    if state.registry.lookup(name).is_none() {
+        return Err(format!("unknown unit: {name}"));
+    }
+    let n: usize = lines.and_then(|s| s.parse().ok()).unwrap_or(50);
+    let path = format!("{}/{}.log", state.log_dir, name);
+    match std::fs::read_to_string(&path) {
+        Ok(body) => {
+            let all: Vec<&str> = body.lines().collect();
+            let start = all.len().saturating_sub(n);
+            for line in &all[start..] {
+                writeln!(stream, "{line}").map_err(|e| e.to_string())?;
+            }
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            writeln!(stream, "(no log at {path})").map_err(|e| e.to_string())?;
+        }
+        Err(e) => return Err(format!("read {path}: {e}")),
+    }
+    Ok(())
+}
+
+/// CGROUPS = list the service cgroup hierarchy under
+/// `/sys/fs/cgroup/wo.slice/` and each cgroup's live PIDs (the
+/// `systemd-cgls` equivalent from the Phase 4 acceptance criteria).
+fn cgroups(mut stream: &UnixStream) -> Result<(), String> {
+    let base = "/sys/fs/cgroup/wo.slice";
+    let entries = match std::fs::read_dir(base) {
+        Ok(e) => e,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            writeln!(stream, "(no cgroup hierarchy at {base})").map_err(|e| e.to_string())?;
+            return Ok(());
+        }
+        Err(e) => return Err(format!("read {base}: {e}")),
+    };
+    let mut dirs: Vec<String> = entries
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_dir())
+        .filter_map(|e| e.file_name().into_string().ok())
+        .collect();
+    dirs.sort();
+    if dirs.is_empty() {
+        writeln!(stream, "(no service cgroups under {base})").map_err(|e| e.to_string())?;
+    }
+    for d in dirs {
+        let procs = std::fs::read_to_string(format!("{base}/{d}/cgroup.procs")).unwrap_or_default();
+        let pids: Vec<&str> = procs.split_whitespace().collect();
+        writeln!(stream, "{base}/{d}  pids=[{}]", pids.join(",")).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// ENABLED = list the unit names persisted in enabled.d. Doesn't
+/// reflect *currently-running* — for that use LIST or STATUS.
+fn list_enabled(mut stream: &UnixStream, state: &SupervisorState) -> Result<(), String> {
+    let units = enabled::load(&state.enabled_d)
+        .map_err(|e| format!("read enabled.d: {e}"))?;
+    if units.is_empty() {
+        writeln!(stream, "(no units enabled)").map_err(|e| e.to_string())?;
+    } else {
+        for u in units {
+            writeln!(stream, "{u}").map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
 }
