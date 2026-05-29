@@ -57,6 +57,12 @@ pub fn mount_essentials() -> io::Result<()> {
     Ok(())
 }
 
+// NOTE: /run/* subdirectory creation (e.g. /run/dbus for dbus-daemon)
+// moved to writeonce-bootstrap.service, the oneshot that runs after
+// sysinit.target and before dbus.service. PID 1 stays narrow:
+// mount the pseudo-filesystems, nothing else. See
+// plan/writeonce-svc-fix/escape-the-loop.md.
+
 fn do_mount(spec: &MountSpec) -> io::Result<()> {
     let source = CString::new(spec.source).unwrap();
     let target = CString::new(spec.target).unwrap();
@@ -88,3 +94,4 @@ fn do_mount(spec: &MountSpec) -> io::Result<()> {
     }
     Ok(())
 }
+
