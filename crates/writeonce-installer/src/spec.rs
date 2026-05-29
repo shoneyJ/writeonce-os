@@ -20,6 +20,23 @@ pub struct TargetOsSpec {
     pub user: Option<UserSpec>,
     #[serde(default)]
     pub keyboard: Option<KeyboardSpec>,
+    #[serde(default)]
+    pub network: Option<NetworkSpec>,
+}
+
+#[derive(Debug, Deserialize, Default, Clone)]
+pub struct NetworkSpec {
+    /// When `true`, the installer writes
+    /// `/etc/writeonce/enabled.d/{iwd,dhcpcd,writeonce-modules-load}.toml`
+    /// before the artifact is sealed, AND replaces `default.target` so
+    /// it requires `multi-user.target` (so the enabled.d entries fire
+    /// at boot). Use for headless / SSH-only profiles where the user
+    /// can't log in without network.
+    ///
+    /// Default `false`. Desktop installs leave network opt-in:
+    /// `wo-ctl enable iwd dhcpcd` after first login.
+    #[serde(default)]
+    pub enabled_at_boot: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, Default, Clone)]
@@ -40,9 +57,13 @@ pub struct UserSpec {
     /// GECOS field (real name). Optional.
     #[serde(default)]
     pub real_name: Option<String>,
-    /// Pre-hashed password ($6$… SHA-512 crypt). If None, prompt for
-    /// plaintext password twice and hash via openssl.
+    /// **Ignored.** Kept on the schema only so existing JSON files that
+    /// include this field still parse cleanly. The installer always
+    /// prompts for the password interactively — a JSON file on disk
+    /// is the wrong place to store a credential, and a stale hash
+    /// invites the operator to use the wrong password later.
     #[serde(default)]
+    #[allow(dead_code)]
     pub password_hash: Option<String>,
     /// Login shell. Default /bin/bash.
     #[serde(default)]
@@ -79,12 +100,20 @@ impl TargetOsSpec {
 /// The resolved plan — all values present, no Nones. Produced by
 /// merging the optional spec with interactive prompts for missing
 /// fields. Consumed by partition.rs (sizes) and customize.rs (user +
-/// keyboard).
+/// keyboard + network).
 #[derive(Debug, Clone)]
 pub struct InstallationPlan {
     pub partition: PartitionPlan,
     pub user: ResolvedUser,
     pub keyboard: ResolvedKeyboard,
+    pub network: ResolvedNetwork,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ResolvedNetwork {
+    /// When true, pre-enable iwd + dhcpcd + writeonce-modules-load
+    /// via enabled.d stubs and point default.target at multi-user.target.
+    pub enabled_at_boot: bool,
 }
 
 #[derive(Debug, Clone)]

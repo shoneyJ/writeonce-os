@@ -459,6 +459,10 @@ fn build_plan(app: &App) -> Result<InstallationPlan> {
                 Some(app.kb_variant.clone())
             },
         },
+        // TUI doesn't expose a network toggle yet — desktop default.
+        // Headless / SSH-only setups go via the CLI prompt path which
+        // reads the spec's `network.enabled_at_boot` field.
+        network: crate::spec::ResolvedNetwork::default(),
     })
 }
 

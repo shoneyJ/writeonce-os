@@ -7,7 +7,7 @@
 use anyhow::{Context, Result};
 use std::path::Path;
 
-use crate::spec::{InstallationPlan, ResolvedKeyboard, ResolvedUser};
+use crate::spec::{InstallationPlan, ResolvedKeyboard, ResolvedNetwork, ResolvedUser};
 
 pub fn apply(plan: &InstallationPlan, mount_root: &Path) -> Result<()> {
     log::info!("Customising staged sysroot at {}", mount_root.display());
@@ -18,6 +18,13 @@ pub fn apply(plan: &InstallationPlan, mount_root: &Path) -> Result<()> {
     rename_home(mount_root, &plan.user)?;
     patch_xinitrc(mount_root, &plan.user, &plan.keyboard)?;
     write_vconsole_conf(mount_root, &plan.keyboard)?;
+    apply_network(mount_root, &plan.network)?;
+
+    // NOTE: machine-id generation moved to writeonce-bootstrap (a
+    // boot-time oneshot). The installer used to write /etc/machine-id
+    // here, but that meant "same image, different machines" got the
+    // same ID. Bootstrap generates fresh on first boot of each
+    // machine. See plan/writeonce-svc-fix/escape-the-loop.md.
 
     log::info!("Customisation done");
     Ok(())
@@ -261,6 +268,55 @@ fn write_vconsole_conf(root: &Path, kbd: &ResolvedKeyboard) -> Result<()> {
     };
     std::fs::write(&path, &content).context("write /etc/vconsole.conf")?;
     log::info!("/etc/vconsole.conf: {}", content.trim());
+    Ok(())
+}
+
+// ---- network (enabled.d stubs + default.target retarget) ------------------
+
+fn apply_network(root: &Path, net: &ResolvedNetwork) -> Result<()> {
+    if !net.enabled_at_boot {
+        log::info!("network.enabled_at_boot=false — leaving network opt-in");
+        return Ok(());
+    }
+    log::info!("network.enabled_at_boot=true — pre-enabling network services");
+    let enabled_d = root.join("etc/writeonce/enabled.d");
+    std::fs::create_dir_all(&enabled_d)
+        .with_context(|| format!("create {}", enabled_d.display()))?;
+    // Stub schema must match what writeonce-svc::enabled::load parses
+    // (a single `unit = "<name>"` key).
+    for unit in &["iwd.service", "dhcpcd.service", "writeonce-modules-load.service"] {
+        let path = enabled_d.join(format!("{unit}.toml"));
+        let body = format!(
+            "# Pre-enabled by writeonce-installer (network.enabled_at_boot=true).\n\
+             unit = \"{unit}\"\n"
+        );
+        std::fs::write(&path, body)
+            .with_context(|| format!("write {}", path.display()))?;
+        log::info!("enabled.d: pre-enabled {unit}");
+    }
+    // Headless boot wants enabled.d entries to fire at boot, which
+    // means default.target needs to require multi-user.target rather
+    // than just console.target. Rewrite the staged unit file in place.
+    let default_target = root.join("etc/writeonce/services/default.target.toml");
+    if default_target.exists() {
+        let headless_body = "\
+# Rewritten by writeonce-installer (network.enabled_at_boot=true).\n\
+# default.target requires multi-user.target so enabled.d entries\n\
+# (iwd, dhcpcd, modules-load) fire at boot — necessary for SSH/headless.\n\
+\n\
+[unit]\n\
+description = \"Default supervisor target — headless (network at boot)\"\n\
+requires    = [\"multi-user.target\"]\n\
+after       = [\"multi-user.target\"]\n";
+        std::fs::write(&default_target, headless_body)
+            .with_context(|| format!("rewrite {}", default_target.display()))?;
+        log::info!("default.target retargeted to multi-user.target for headless boot");
+    } else {
+        log::warn!(
+            "default.target.toml not found at {}; skipping retarget",
+            default_target.display()
+        );
+    }
     Ok(())
 }
 

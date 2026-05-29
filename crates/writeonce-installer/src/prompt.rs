@@ -10,7 +10,7 @@ use std::io::{BufRead, Write};
 use crate::detect::UsbDevice;
 use crate::spec::{
     InstallationPlan, KeyboardSpec, PartitionPlan, PartitionsSpec,
-    ResolvedKeyboard, ResolvedUser, TargetOsSpec, UserSpec,
+    ResolvedKeyboard, ResolvedNetwork, ResolvedUser, TargetOsSpec, UserSpec,
 };
 
 const DEFAULT_ESP_MIB: u32 = 512;
@@ -22,10 +22,19 @@ pub fn gather_plan(spec: &TargetOsSpec, device: &UsbDevice) -> Result<Installati
     let partition = gather_partition(spec.partitions.as_ref(), device)?;
     let user = gather_user(spec.user.as_ref())?;
     let keyboard = gather_keyboard(spec.keyboard.as_ref())?;
+    // Network defaults to off (desktop opt-in). The spec can flip it
+    // to `true` for headless / SSH-only profiles where the user can't
+    // get back in without a network on first boot.
+    let network = ResolvedNetwork {
+        enabled_at_boot: spec.network.as_ref()
+            .and_then(|n| n.enabled_at_boot)
+            .unwrap_or(false),
+    };
     Ok(InstallationPlan {
         partition,
         user,
         keyboard,
+        network,
     })
 }
 
@@ -125,14 +134,14 @@ fn gather_user(spec: Option<&UserSpec>) -> Result<ResolvedUser> {
         None => prompt_string(" Real name (optional, Enter to skip): ", Some(""))?,
     };
 
-    let password_hash = match spec.and_then(|s| s.password_hash.clone()) {
-        Some(h) => {
-            println!(" Password: <pre-hashed from spec>");
-            validate_hash(&h)?;
-            h
-        }
-        None => prompt_password_and_hash(&name)?,
-    };
+    // Password is ALWAYS prompted interactively, even if `password_hash`
+    // is present in target-os.json. Reasons:
+    //   - A JSON file on disk is a poor place for a credential.
+    //   - The hash format / crypt parameters can drift between hosts.
+    //   - Interactive prompt makes the operator type the password they
+    //     just chose, which catches typos.
+    // We ignore `spec.password_hash` here on purpose.
+    let password_hash = prompt_password_and_hash(&name)?;
 
     let shell = spec
         .and_then(|s| s.shell.clone())
