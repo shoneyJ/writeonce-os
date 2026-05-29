@@ -1,0 +1,28 @@
+[package]
+name        = "writeonce-kerngen"
+version     = "0.1.0"
+description = "Derive a target-specific kernel config from a hardware probe. Phase 7a (probe) implemented; resolve to come in Phase 7b."
+
+edition      .workspace = true
+license      .workspace = true
+authors      .workspace = true
+rust-version .workspace = true
+
+# Self-contained; reads /sys, /proc, /sys/class/dmi/id, /sys/firmware/efi
+# and emits JSON. Designed to cross-compile to musl so a single static
+# binary can be dropped onto any target (live USB, installed system,
+# workstation) and produce a probe artifact that future `resolve`
+# consumes.
+#
+# See plan/phase-7-kerngen.md for the algorithm + roadmap and
+# docs/learning/t450-boot-debugging.md for the bring-up pain that
+# motivates this tool.
+
+[dependencies]
+libc       .workspace = true
+serde      .workspace = true
+serde_json .workspace = true
+
+[[bin]]
+name = "writeonce-kerngen"
+path = "src/main.rs"
