@@ -1,19 +1,24 @@
-//! `pivot_root` the initramfs out and `execve` PID 1.
+//! Replace the kernel-loaded initramfs with the real root, then
+//! `execve` PID 1.
 //!
-//! Sequence (per `man switch_root` and the kernel's
-//! `Documentation/admin-guide/initrd.rst`):
+//! We deliberately do **not** use `pivot_root(2)`. The kernel's
+//! `Documentation/admin-guide/initrd.rst` is explicit: "It is
+//! impossible to call pivot_root() from the initramfs because rootfs
+//! cannot be unmounted." Calls return `EINVAL`. The busybox
+//! `switch_root` and systemd `initrd-switch-root.service` both use
+//! the `mount --move` + `chroot` idiom instead:
 //!
 //!   1. Mount the real root on `/sysroot`.
-//!   2. Move-mount `/proc`, `/sys`, `/dev` (and `/run` if present) into
-//!      `/sysroot/*` so the real system finds them mounted.
+//!   2. Move-mount `/proc`, `/sys`, `/dev` (and `/run` if present)
+//!      into `/sysroot/*` so the real system finds them mounted.
 //!   3. `chdir(/sysroot)`.
-//!   4. `pivot_root(., .)` — old root becomes the current directory
-//!      (now `/sysroot`); new root is what was at `/sysroot` (now `/`).
-//!   5. `chroot(.)` — defensive (some kernels need it).
-//!   6. `umount2("/sysroot", MNT_DETACH)` — release the old initramfs
-//!      memory (the kernel returns it to the page allocator).
+//!   4. `mount --move /sysroot /` — the new root takes the place of
+//!      the kernel rootfs. (This is what pivot_root would have done,
+//!      but without the rootfs-can't-unmount restriction.)
+//!   5. `chroot(.)` — make `/` resolve into the moved-in fs.
+//!   6. `chdir(/)`.
 //!   7. `execve(init_path, [init_path], envp)` — typically
-//!      `/sbin/writeonce-pid1`.
+//!      `/usr/sbin/writeonce-pid1`.
 
 use std::ffi::CString;
 use std::io;
@@ -47,24 +52,19 @@ pub fn switch_and_exec(
         return Err(io::Error::last_os_error());
     }
 
-    // 4. pivot_root(., .)
-    let dot = CString::new(".").unwrap();
-    let rc = unsafe { libc::syscall(libc::SYS_pivot_root, dot.as_ptr(), dot.as_ptr()) };
-    if rc < 0 {
-        return Err(io::Error::last_os_error());
-    }
+    // 4. mount --move /sysroot to /  — replaces the kernel rootfs.
+    //    Equivalent to what pivot_root(2) would have done, but works
+    //    from inside an initramfs where pivot_root returns EINVAL.
+    mount::move_mount(".", "/")?;
 
-    // 5. chroot(.) — defensive
+    // 5. chroot(.) — now `/` resolves to the moved-in real root.
+    let dot = CString::new(".").unwrap();
     if unsafe { libc::chroot(dot.as_ptr()) } != 0 {
         return Err(io::Error::last_os_error());
     }
     if unsafe { libc::chdir(CString::new("/").unwrap().as_ptr()) } != 0 {
         return Err(io::Error::last_os_error());
     }
-
-    // 6. Detach the old initramfs.
-    let old_root = CString::new("/").unwrap();
-    let _ = unsafe { libc::umount2(old_root.as_ptr(), libc::MNT_DETACH) };
 
     // 7. execve the PID 1 binary.
     let prog = CString::new(init_path)

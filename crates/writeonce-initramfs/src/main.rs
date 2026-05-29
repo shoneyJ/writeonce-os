@@ -56,7 +56,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // 4. Discover the root device.
     let root_spec = cmd.root_spec.ok_or("no root= on /proc/cmdline")?;
-    let root_dev = discover::locate_root(&root_spec)?;
+    let root_dev = discover::locate_root(&root_spec, cmd.rootwait_secs)?;
     println!("writeonce-initramfs: root device = {}", root_dev.display());
 
     // 5. Mount + pivot + exec.
@@ -65,7 +65,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         switch_root::switch_and_exec(
             root_dev.to_str().ok_or("non-utf8 root path")?,
             fstype,
-            libc::MS_RDONLY as u64,
+            cmd.mount_flags,
             &cmd.init_path,
         )?;
         // switch_and_exec returns `!` on success; if we got here it errored.
@@ -81,8 +81,16 @@ fn recovery_shell() -> ! {
     println!("================================================================");
     println!("  WriteOnce OS — initramfs recovery shell");
     println!("================================================================");
-    println!("  Commands: anything you can execve, plus 'help' and 'exit'.");
     println!("  /proc, /sys, /dev are mounted (if PID 1).");
+    println!("  Built-ins (no binaries on initramfs):");
+    println!("    help                show this text");
+    println!("    ls [PATH]           list directory  (default: /)");
+    println!("    cat FILE            print file contents");
+    println!("    cmdline             /proc/cmdline");
+    println!("    mounts              /proc/mounts");
+    println!("    blocks              /sys/class/block contents");
+    println!("    exit                pause forever (PID 1 cannot exit cleanly)");
+    println!("  Anything else is execvp'd in $PATH (rarely useful — no binaries).");
     println!();
 
     let stdin = io::stdin();
@@ -105,14 +113,80 @@ fn recovery_shell() -> ! {
             println!("writeonce-initramfs: pausing forever (PID 1 cannot exit cleanly)");
             loop { unsafe { libc::pause() }; }
         }
-        if line == "help" {
-            println!("  Just type any command path with its args.");
-            println!("  Example: /bin/busybox mount, /bin/busybox sh, /bin/busybox ls /sys/class/block");
-            continue;
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.is_empty() { continue; }
+
+        // Built-in commands — execute inside this Rust process so we
+        // don't need binaries on the initramfs filesystem. These cover
+        // every diagnostic a sysadmin reaches for in the first 30 sec
+        // after dropping to a recovery shell.
+        match parts[0] {
+            "help" => {
+                println!("  ls [PATH] | cat FILE | cmdline | mounts | blocks | exit");
+                continue;
+            }
+            "ls" => {
+                let path = parts.get(1).copied().unwrap_or("/");
+                match std::fs::read_dir(path) {
+                    Ok(entries) => {
+                        for e in entries.flatten() {
+                            let name = e.file_name();
+                            let kind = e.file_type().ok().map(|t| {
+                                if t.is_dir() { "d" }
+                                else if t.is_symlink() { "l" }
+                                else if t.is_file() { "f" }
+                                else { "?" }
+                            }).unwrap_or("?");
+                            println!("  {kind}  {}", name.to_string_lossy());
+                        }
+                    }
+                    Err(e) => println!("  ls: {path}: {e}"),
+                }
+                continue;
+            }
+            "cat" => {
+                let Some(path) = parts.get(1) else { println!("  usage: cat FILE"); continue; };
+                match std::fs::read_to_string(path) {
+                    Ok(s) => print!("{s}{}", if s.ends_with('\n') { "" } else { "\n" }),
+                    Err(e) => println!("  cat: {path}: {e}"),
+                }
+                continue;
+            }
+            "cmdline" => {
+                let _ = std::fs::read_to_string("/proc/cmdline")
+                    .map(|s| print!("{s}"))
+                    .map_err(|e| println!("  /proc/cmdline: {e}"));
+                continue;
+            }
+            "mounts" => {
+                let _ = std::fs::read_to_string("/proc/mounts")
+                    .map(|s| print!("{s}"))
+                    .map_err(|e| println!("  /proc/mounts: {e}"));
+                continue;
+            }
+            "blocks" => {
+                match std::fs::read_dir("/sys/class/block") {
+                    Ok(entries) => {
+                        for e in entries.flatten() {
+                            let name = e.file_name();
+                            let sz_path = e.path().join("size");
+                            let size = std::fs::read_to_string(&sz_path)
+                                .ok()
+                                .and_then(|s| s.trim().parse::<u64>().ok())
+                                .map(|sectors| sectors * 512)
+                                .map(|b| format!("{:.2} MiB", b as f64 / (1024.0*1024.0)))
+                                .unwrap_or_else(|| "?".into());
+                            println!("  /dev/{} — {size}", name.to_string_lossy());
+                        }
+                    }
+                    Err(e) => println!("  /sys/class/block: {e}"),
+                }
+                continue;
+            }
+            _ => {}
         }
 
         // Tokenize on whitespace; exec the first as a program, the rest as argv.
-        let parts: Vec<&str> = line.split_whitespace().collect();
         let pid = unsafe { libc::fork() };
         if pid < 0 {
             eprintln!("fork: {}", io::Error::last_os_error());
