@@ -392,7 +392,7 @@ shim is alive on the bus.
 
 - `docs/learning/systemd-feature-survey.md` § Logind minimum surface —
   the original feature audit this implementation realises.
-- `plan/phase-4-supervisor.md` — context for why logind is a separate
+- `plan/done/phase-4-supervisor.md` — context for why logind is a separate
   service unit, not part of writeonce-svc.
 - `crates/writeonce-svc/examples/services/logind.service.toml` — the
   service unit that writeonce-svc consumes to spawn this daemon.

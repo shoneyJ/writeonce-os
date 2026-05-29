@@ -6,7 +6,7 @@
 
 ## Language choice — Bash, not Rust
 
-Phase 0 is orchestration of upstream `configure && make && make install` recipes. The pedagogical content is **the LFS sequence itself** — the scripts should read one-for-one against LFS chapter 5 of `../.agents/reference/lfs/`. Rust would obscure rather than illuminate. Rust takes over from Phase 3 (PID 1) where ownership and type safety pay off. See [`../build/README.md`](../build/README.md) for the longer rationale.
+Phase 0 is orchestration of upstream `configure && make && make install` recipes. The pedagogical content is **the LFS sequence itself** — the scripts should read one-for-one against LFS chapter 5 of `../.agents/reference/lfs/`. Rust would obscure rather than illuminate. Rust takes over from Phase 3 (PID 1) where ownership and type safety pay off. See [`../build/README.md`](../../build/README.md) for the longer rationale.
 
 ## Subtasks
 

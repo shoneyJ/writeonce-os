@@ -9,7 +9,7 @@ Two risks drive the plan:
 1. **CONFIG drift.** `build/kernel-config-additions.fragment` was authored against 6.12. Between 6.12 LTS and 7.0 some CONFIG symbols may have been renamed, split, or removed. `make olddefconfig` will auto-resolve most, but renamed hardware-critical options (I218 ethernet, Intel 7265 wifi, HD 5500 graphics, HDA audio — all required for T450 functionality) need a visual diff pass.
 2. **Firmware compatibility.** `LINUX_FIRMWARE_COMMIT=adb6dceb45b98c4149e1ce68fc1a5f394fd67695` (`build/versions.env:24`) was pinned for the 6.12 kernel. 7.0 may request newer firmware blobs (especially `iwlwifi-7265D-*.ucode` API revisions). The kernel will boot either way, but missing-firmware warnings should be checked against the dmesg smoke output.
 
-Phase 7 `writeonce-kerngen` is **not** in scope for this change. The fragment-merge approach stays; kerngen's `resolve` step is future work tracked in `plan/phase-7-kerngen.md`.
+Phase 7 `writeonce-kerngen` is **not** in scope for this change. The fragment-merge approach stays; kerngen's `resolve` step is future work tracked in `plan/done/phase-7-kerngen.md`.
 
 ## Approach
 

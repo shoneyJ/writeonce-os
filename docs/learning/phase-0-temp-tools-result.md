@@ -97,4 +97,4 @@ userspace inside the chroot; we need just enough to:
 
 So the natural next step after `03-sysroot-temp-tools.sh` is **moving to
 Phase 2** (kernel build + transitional initramfs + first T450 boot), not
-LFS Chapter 7. See [`../../plan/phase-2-minimal-linux.md`](../../plan/phase-2-minimal-linux.md).
+LFS Chapter 7. See [`../../plan/done/phase-2-minimal-linux.md`](../../plan/done/phase-2-minimal-linux.md).

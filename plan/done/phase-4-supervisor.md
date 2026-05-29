@@ -62,10 +62,10 @@ A working supervisor that starts and stops services in dependency order with cgr
 
 These four learning docs flesh out the Phase 4 sketch into implementable detail:
 
-- [`../docs/learning/systemd-feature-survey.md`](../docs/learning/systemd-feature-survey.md) — what the WriteOnce supervisor mirrors from systemd (and what it doesn't).
-- [`../docs/learning/phase-4-cgroup-isolation.md`](../docs/learning/phase-4-cgroup-isolation.md) — `clone3(CLONE_INTO_CGROUP)` placement design.
-- [`../docs/learning/phase-4-service-toml-schema.md`](../docs/learning/phase-4-service-toml-schema.md) — unit-file schema + `WantedBy` reverse-dependency semantics.
-- [`../docs/learning/phase-4-dependency-graph.md`](../docs/learning/phase-4-dependency-graph.md) — transaction build, edge types, cycle handling.
+- [`../docs/learning/systemd-feature-survey.md`](../../docs/learning/systemd-feature-survey.md) — what the WriteOnce supervisor mirrors from systemd (and what it doesn't).
+- [`../docs/learning/phase-4-cgroup-isolation.md`](../../docs/learning/phase-4-cgroup-isolation.md) — `clone3(CLONE_INTO_CGROUP)` placement design.
+- [`../docs/learning/phase-4-service-toml-schema.md`](../../docs/learning/phase-4-service-toml-schema.md) — unit-file schema + `WantedBy` reverse-dependency semantics.
+- [`../docs/learning/phase-4-dependency-graph.md`](../../docs/learning/phase-4-dependency-graph.md) — transaction build, edge types, cycle handling.
 
 ## Risks
 

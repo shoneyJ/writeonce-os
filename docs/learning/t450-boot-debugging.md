@@ -162,7 +162,7 @@ Tested + cleared:
   hand-curated fragment" approach we settled for is a pragmatic
   workaround. The right WriteOnce-shaped solution is a tool that
   derives a minimal kernel config from the target's hardware probe.
-  Design captured in [`plan/phase-7-kerngen.md`](../../plan/phase-7-kerngen.md).
+  Design captured in [`plan/done/phase-7-kerngen.md`](../../plan/done/phase-7-kerngen.md).
 
 ## Operational notes
 

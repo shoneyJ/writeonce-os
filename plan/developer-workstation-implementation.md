@@ -414,7 +414,7 @@ crates/writeonce-initramfs/       — Phase 5 Rust /init
 crates/writeonce-bootloader/      — Phase 6 UEFI app (uefi-rs)
 crates/writeonce-login/           — Phase 9 PAM-based console login
 crates/writeonce-install/         — Phase 10 ISO installer
-plan/phase-4-supervisor.md        — already exists; gets updated with container kernel features
+plan/done/phase-4-supervisor.md        — already exists; gets updated with container kernel features
 plan/phase-10-packaging.md        — already exists; gets updated with Nix adoption
 ```
 

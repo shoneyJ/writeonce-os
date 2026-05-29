@@ -81,12 +81,14 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 # Repository context
 
-WriteOnce OS: a from-scratch Linux distro targeting a ThinkPad T450 (Broadwell). Cross-compiled from this workstation, deployed to the T450. Currently mid-build through Phase 8 (X11/GTK4 userspace).
+WriteOnce OS: a from-scratch Linux distro targeting a ThinkPad T450 (Broadwell). Cross-compiled from this workstation, deployed to the T450.
+
+**Status: Phase 9 (i3More desktop bring-up).** Phases 0–8 are complete — cross-toolchain → kernel → initramfs → Rust PID 1 / supervisor / UEFI bootloader → the 85-package X11/Mesa-iris/GTK4/audio/network substrate (their plans are archived under `plan/done/`). The T450 now boots `writeonce-pid1 → writeonce-svc → dbus → logind → writeonce-login` on tty1. Recent boot-chain fixes have landed and await an end-to-end verification boot: libpam staging (the `$LFS/lib64` → `usr/lib` merge in `17-stage-sysroot.sh`), the `writeonce-bootstrap` oneshot (machine-id + `/run/*` dirs), and the `xinit`/`startx` session launcher. `writeonce-svc` Phase-4 hardening (User=/Group= drop, per-unit logs, oneshot start-timeout, cgroup teardown, `wo-ctl journal/cgroups`) is done. Next: verify the boot reaches the i3More X11 desktop, then Phase 10 (packaging).
 
 ## Authoritative reading order
 1. `writeonce-session-notes.md` — the *why*
 2. `plan/00-roadmap.md` — phase map (Phase 0 → Phase 10) + cross-cutting tracks
-3. `plan/phase-N-*.md` — what's next per phase
+3. `plan/phase-9-i3more.md`, `plan/phase-10-packaging.md` — active phases (completed phases archived in `plan/done/`); `plan/writeonce-svc-fix/` holds the in-flight boot-bring-up rounds
 4. `docs/learning/` — long-form rationale captured per phase (per the `feedback_persist_explanations` convention)
 
 ## Phase-to-component map

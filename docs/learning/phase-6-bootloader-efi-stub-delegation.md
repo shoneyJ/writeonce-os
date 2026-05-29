@@ -1,7 +1,7 @@
 # Phase 6 — bootloader design: delegate to the kernel's EFI stub
 
 > Companion to [`../../crates/writeonce-bootloader/src/main.rs`](../../crates/writeonce-bootloader/src/main.rs)
-> and [`../../plan/phase-6-bootloader.md`](../../plan/phase-6-bootloader.md).
+> and [`../../plan/done/phase-6-bootloader.md`](../../plan/done/phase-6-bootloader.md).
 > Captures the design choice that shrank the bootloader from "construct
 > `boot_params` + e820 + handover-jump" to "`LoadImage` and let the
 > kernel handle its own setup."

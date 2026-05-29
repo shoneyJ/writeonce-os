@@ -1,7 +1,7 @@
 # Concurrency model for PID 1 + supervisor — and where io_uring fits
 
-> Companion to [`plan/phase-3-rust-pid1.md`](../../plan/phase-3-rust-pid1.md)
-> and [`plan/phase-4-supervisor.md`](../../plan/phase-4-supervisor.md).
+> Companion to [`plan/done/phase-3-rust-pid1.md`](../../plan/done/phase-3-rust-pid1.md)
+> and [`plan/done/phase-4-supervisor.md`](../../plan/done/phase-4-supervisor.md).
 > Answers three recurring design questions: are these binaries
 > single-threaded? When does threaded parallelism help? Where does
 > io_uring earn its keep?

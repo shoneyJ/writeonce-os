@@ -4,20 +4,27 @@ A from-scratch Linux distribution, built as a learning vehicle for kernel intern
 
 ## Status
 
-**Phase 8 complete — 85 packages cross-built.** Phases 0–8 land:
-cross-toolchain, kernel, initramfs, Rust PID 1, supervisor, bootloader,
-Xorg + Mesa (iris), GTK4, alsa-lib + pipewire + wireplumber, ell + iwd
-+ iproute2 + iputils + dhcpcd. Kernel rebuilt 2026-05-24 with the 30
-missing CONFIG_* options from `kernel-config-additions.fragment`
-(CONTAINERS, BPF, MICROCODE_INTEL, MISC_RTSX, etc.) — bzImage 14 MB,
-initramfs.img 2.4 MB.
+**Phases 0–8 complete; Phase 9 (i3More desktop) bring-up.** Phases 0–8 land:
+cross-toolchain, kernel, initramfs, Rust PID 1 + supervisor + UEFI bootloader,
+and the 85-package userspace substrate (Xorg + Mesa/iris, GTK4, alsa-lib +
+pipewire + wireplumber, ell + iwd + iproute2 + iputils + dhcpcd). Kernel rebuilt
+2026-05-24 with the 30 `kernel-config-additions.fragment` options
+(CONTAINERS, BPF, MICROCODE_INTEL, MISC_RTSX, …) — bzImage 14 MB, initramfs.img
+2.4 MB. Completed phase plans are archived under [`plan/done/`](plan/done/).
 
-Next: Phase 9 (i3 + i3More integration via `17-stage-sysroot.sh` →
-`18-make-artifacts.sh`).
+**Now:** the T450 boots `writeonce-pid1 → writeonce-svc → dbus → logind →
+writeonce-login` on tty1. The fixes that clear the last boot failures (seen in
+`.agents/PXL_20260527_213400915.jpg`) have landed and await a verification boot:
+libpam staging (the `$LFS/lib64` → `usr/lib` merge in `17-stage-sysroot.sh`),
+the `writeonce-bootstrap` oneshot (machine-id + `/run/*` dirs), and the
+`xinit`/`startx` session launcher. Then: login → `startx` → Xorg → i3 + i3More.
+See [`plan/writeonce-svc-fix/`](plan/writeonce-svc-fix/) and
+[`docs/learning/t450-boot-debugging.md`](docs/learning/t450-boot-debugging.md).
 
-Quick driver: `just phase-8a` … `just phase-8f` runs each round; on
-failure use `just audit-last` to surface the next missing dep, fix,
-re-run. See `justfile`.
+Quick driver: `just phase-8a` … `just phase-8f` runs each Phase-8 round; on a
+break use `just audit-last` to surface the next missing dep. Before flashing,
+`just check-staging` validates the staged sysroot (libs, units, `startx`,
+dbus/logind ldd). See `justfile`.
 
 ## Phase 8 build fixes (chronological)
 
@@ -167,7 +174,8 @@ just audit-last      # shows: Fatal / Required / Optional / Headers / Programs
 ```
 writeonce-session-notes.md   Architectural source of truth: 8 LFS phases, 15-phase boot,
                              language-per-phase decisions
-plan/                        Phase-by-phase implementation roadmap (00-roadmap + 11 phase files)
+plan/                        Build roadmap (00-roadmap) + active phase plans (phase-9, phase-10);
+                             completed phases archived in plan/done/; writeonce-svc-fix/ = boot bring-up
 paper/                       LaTeX technical paper (writeonce.tex + writeonce.bib + PDF)
 scripts/
   survey-target-machine.sh   Hardware survey script run on the T450
@@ -205,8 +213,47 @@ See `writeonce-session-notes.md` Topic 4 for the rationale.
 
 1. [`writeonce-session-notes.md`](writeonce-session-notes.md) — start here for the *why*
 2. [`plan/00-roadmap.md`](plan/00-roadmap.md) — start here for the *how*
-3. Individual `plan/phase-N-*.md` files — start here for the *what next*
+3. Active phase plans — [`plan/phase-9-i3more.md`](plan/phase-9-i3more.md), [`plan/phase-10-packaging.md`](plan/phase-10-packaging.md) — for the *what next*; completed phases are in [`plan/done/`](plan/done/)
 4. [`paper/writeonce.pdf`](paper/writeonce.pdf) — the long-form technical paper (10 pp.), maintained from [`paper/writeonce.tex`](paper/writeonce.tex); cites the LFS book and contemporary references. Rebuild with `cd paper && make`.
+
+See [Documentation map](#documentation-map) below for the full set of in-repo docs.
+
+## Documentation map
+
+Every in-repo Markdown document, grouped and linked. (External reference mirrors
+under `.agents/reference/` are covered in *Upstream references* below.)
+
+**Top level**
+- [`CLAUDE.md`](CLAUDE.md) — contributor/agent guide + repository context
+- [`writeonce-session-notes.md`](writeonce-session-notes.md) — architectural source of truth (LFS phases, 15-phase boot, language-per-phase)
+- [`.agents/target-machine.md`](.agents/target-machine.md) — T450 hardware survey output
+
+**Plan — active** ([`plan/`](plan/))
+- [`00-roadmap.md`](plan/00-roadmap.md) — master phase index (Phase 0 → 10)
+- [`phase-9-i3more.md`](plan/phase-9-i3more.md) · [`phase-10-packaging.md`](plan/phase-10-packaging.md)
+- [`developer-workstation-implementation.md`](plan/developer-workstation-implementation.md) · [`Kernel7/kernel-7.0-bump.md`](plan/Kernel7/kernel-7.0-bump.md)
+- Boot bring-up rounds: [`writeonce-svc-fix/escape-the-loop.md`](plan/writeonce-svc-fix/escape-the-loop.md) · [`fix-learn-from-scratch-boot.md`](plan/writeonce-svc-fix/fix-learn-from-scratch-boot.md) · [`fix-libpam-and-dbus.md`](plan/writeonce-svc-fix/fix-libpam-and-dbus.md)
+
+**Plan — done** ([`plan/done/`](plan/done/)) — completed phases
+- [`phase-0-toolchain.md`](plan/done/phase-0-toolchain.md) · [`phase-1-target-prep.md`](plan/done/phase-1-target-prep.md) · [`phase-2-minimal-linux.md`](plan/done/phase-2-minimal-linux.md) · [`phase-3-rust-pid1.md`](plan/done/phase-3-rust-pid1.md) · [`phase-4-supervisor.md`](plan/done/phase-4-supervisor.md)
+- [`phase-5-initramfs.md`](plan/done/phase-5-initramfs.md) · [`phase-6-bootloader.md`](plan/done/phase-6-bootloader.md) · [`phase-7-kernel.md`](plan/done/phase-7-kernel.md) · [`phase-7-kerngen.md`](plan/done/phase-7-kerngen.md) · [`phase-8-x11-gtk4.md`](plan/done/phase-8-x11-gtk4.md)
+
+**Crate READMEs** ([`crates/`](crates/)) — Rust boot-path components
+- [`writeonce-bootloader`](crates/writeonce-bootloader/README.md) · [`writeonce-initramfs`](crates/writeonce-initramfs/README.md) · [`writeonce-pid1`](crates/writeonce-pid1/README.md) · [`writeonce-installer`](crates/writeonce-installer/README.md)
+- No README yet: `writeonce-svc`, `writeonce-login`, `writeonce-logind`, `writeonce-session-create`, `writeonce-kerngen`
+
+**docs/ — long-form rationale**
+- [`kernel-build-history.md`](docs/kernel-build-history.md)
+- Cross-cutting: [`00-concepts-coverage.md`](docs/learning/00-concepts-coverage.md) · [`supply-chain-defense.md`](docs/learning/supply-chain-defense.md) · [`containers-kernel-requirements.md`](docs/learning/containers-kernel-requirements.md) · [`multi-gpu-portability.md`](docs/learning/multi-gpu-portability.md) · [`future-installer-remote-build.md`](docs/learning/future-installer-remote-build.md) · [`t450-boot-debugging.md`](docs/learning/t450-boot-debugging.md)
+- Phase 0: [`phase-0-cross-toolchain.md`](docs/learning/phase-0-cross-toolchain.md) · [`phase-0-lfs-tools-layout.md`](docs/learning/phase-0-lfs-tools-layout.md) · [`phase-0-temp-tools-result.md`](docs/learning/phase-0-temp-tools-result.md)
+- Phase 2: [`phase-2-busybox.md`](docs/learning/phase-2-busybox.md) · [`phase-2-chroot.md`](docs/learning/phase-2-chroot.md)
+- Phase 4: [`phase-4-cgroup-isolation.md`](docs/learning/phase-4-cgroup-isolation.md) · [`phase-4-concurrency-and-io-uring.md`](docs/learning/phase-4-concurrency-and-io-uring.md) · [`phase-4-dependency-graph.md`](docs/learning/phase-4-dependency-graph.md) · [`phase-4-service-toml-schema.md`](docs/learning/phase-4-service-toml-schema.md) · [`phase-4d-logind-shim.md`](docs/learning/phase-4d-logind-shim.md) · [`systemd-feature-survey.md`](docs/learning/systemd-feature-survey.md)
+- Phase 6: [`phase-6-bootloader-efi-stub-delegation.md`](docs/learning/phase-6-bootloader-efi-stub-delegation.md)
+- Phase 8: [`phase-8-userspace-build-strategy.md`](docs/learning/phase-8-userspace-build-strategy.md) · [`phase-8b-x11-protocol-stack.md`](docs/learning/phase-8b-x11-protocol-stack.md) · [`phase-8c-xorg-server-and-drm.md`](docs/learning/phase-8c-xorg-server-and-drm.md) · [`phase-8d-gtk-stack.md`](docs/learning/phase-8d-gtk-stack.md) · [`phase-8e-audio-stack.md`](docs/learning/phase-8e-audio-stack.md) · [`phase-8f-network-stack.md`](docs/learning/phase-8f-network-stack.md)
+- Phase 9–10: [`phase-9-desktop-bringup.md`](docs/learning/phase-9-desktop-bringup.md) · [`phase-10-installer.md`](docs/learning/phase-10-installer.md)
+
+**Build**
+- [`build/README.md`](build/README.md) · [`build/keys/README.md`](build/keys/README.md)
 
 ## Upstream references
 
@@ -217,28 +264,28 @@ External projects this build draws from. All are mirrored locally as read-only s
 - **Upstream:** [github.com/lfs-book/lfs](https://github.com/lfs-book/lfs) — official sources of the LFS book (DocBook XML)
 - **Project site:** [linuxfromscratch.org](https://www.linuxfromscratch.org/)
 - **Local mirror:** [`.agents/reference/lfs/`](.agents/reference/lfs/)
-- **Used by:** [`plan/phase-0-toolchain.md`](plan/phase-0-toolchain.md) (LFS chapters 5–6 = cross-toolchain + temporary tools), [`plan/phase-2-minimal-linux.md`](plan/phase-2-minimal-linux.md) (chapter 7+ chroot flow)
+- **Used by:** [`plan/done/phase-0-toolchain.md`](plan/done/phase-0-toolchain.md) (LFS chapters 5–6 = cross-toolchain + temporary tools), [`plan/done/phase-2-minimal-linux.md`](plan/done/phase-2-minimal-linux.md) (chapter 7+ chroot flow)
 - **Why:** authoritative recipe for the LFS-style build sequence — package versions, build orders, configure flags. WriteOnce may deviate, but deviations are documented per-phase.
 
 ### Linux kernel
 
 - **Upstream:** [kernel.org](https://www.kernel.org/) / [git.kernel.org](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git)
 - **Local mirror:** [`.agents/reference/linux/`](.agents/reference/linux/)
-- **Pinned version:** Linux 6.12 LTS (see [`plan/phase-2-minimal-linux.md`](plan/phase-2-minimal-linux.md))
+- **Pinned version:** Linux 6.12 LTS (see [`plan/done/phase-2-minimal-linux.md`](plan/done/phase-2-minimal-linux.md))
 - **Used by:** every kernel-touching phase; primary entry points are `init/main.c`, `kernel/exit.c`, `fs/init.c`, `Documentation/rust/`, `arch/x86/`.
 
 ### i3More
 
 - **Upstream:** [github.com/shoneyj/i3More](https://github.com/shoneyj/i3More) (user's own project)
 - **Local mirror:** [`.agents/reference/i3More/`](.agents/reference/i3More/)
-- **Used by:** [`plan/phase-8-x11-gtk4.md`](plan/phase-8-x11-gtk4.md) (substrate requirements), [`plan/phase-9-i3more.md`](plan/phase-9-i3more.md) (integration).
+- **Used by:** [`plan/done/phase-8-x11-gtk4.md`](plan/done/phase-8-x11-gtk4.md) (substrate requirements), [`plan/phase-9-i3more.md`](plan/phase-9-i3more.md) (integration).
 - **Why:** end-goal desktop environment — its dependency surface (X11, GTK4, D-Bus, PAM, PipeWire) defines the userspace stack WriteOnce must provide.
 
 ### systemd
 
 - **Upstream:** [github.com/systemd/systemd](https://github.com/systemd/systemd)
 - **Local mirror:** [`.agents/reference/systemd/`](.agents/reference/systemd/) (shallow clone)
-- **Used by:** [`plan/phase-3-rust-pid1.md`](plan/phase-3-rust-pid1.md) (PID 1 contract), [`plan/phase-4-supervisor.md`](plan/phase-4-supervisor.md) (service supervisor + cgroup v2 + logind D-Bus surface).
+- **Used by:** [`plan/done/phase-3-rust-pid1.md`](plan/done/phase-3-rust-pid1.md) (PID 1 contract), [`plan/done/phase-4-supervisor.md`](plan/done/phase-4-supervisor.md) (service supervisor + cgroup v2 + logind D-Bus surface).
 - **Why:** the most battle-tested PID 1 and service supervisor in the Linux world. WriteOnce is deliberately *not* using systemd, but reads it as the reference implementation for edge cases (reaping, signal handling, cgroup placement, dependency resolution, logind D-Bus). Read for understanding; do not vendor or port. Key files: `src/core/main.c` (PID 1 entry), `src/core/manager.c` (state machine), `src/core/cgroup.c`, `src/login/logind-dbus.c`.
 
 ## License

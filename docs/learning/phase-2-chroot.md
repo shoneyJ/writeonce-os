@@ -1,7 +1,7 @@
 # What "chroot into `$LFS`" means
 
 > Companion to [`phase-0-temp-tools-result.md`](phase-0-temp-tools-result.md)
-> and [`../../plan/phase-2-minimal-linux.md`](../../plan/phase-2-minimal-linux.md).
+> and [`../../plan/done/phase-2-minimal-linux.md`](../../plan/done/phase-2-minimal-linux.md).
 > Clarifies a colloquialism — and explains why WriteOnce's Phase 2 actually
 > *skips* the chroot step that LFS conventionally takes.
 

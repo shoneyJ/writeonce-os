@@ -1,7 +1,7 @@
 # BusyBox — what it is, why Phase 2 uses it
 
 > Companion to [`../../build/05-initramfs.sh`](../../build/05-initramfs.sh)
-> and [`../../plan/phase-2-minimal-linux.md`](../../plan/phase-2-minimal-linux.md).
+> and [`../../plan/done/phase-2-minimal-linux.md`](../../plan/done/phase-2-minimal-linux.md).
 
 ## In one sentence
 

@@ -1,6 +1,6 @@
 # Phase 0 — Cross-toolchain build
 
-This directory implements [Phase 0](../plan/phase-0-toolchain.md) of the
+This directory implements [Phase 0](../plan/done/phase-0-toolchain.md) of the
 WriteOnce OS roadmap: a reproducible cross-toolchain that targets the T450
 (`x86_64-lfs-linux-gnu`), built on this workstation from upstream sources.
 
@@ -122,7 +122,7 @@ against the upstream announcement, copy from `*.next-lock` into
 
 ## Why this is Bash and not Rust
 
-See the language-selection note in `../plan/phase-0-toolchain.md`. The short
+See the language-selection note in `../plan/done/phase-0-toolchain.md`. The short
 version: Phase 0 is a one-shot orchestrator of upstream `configure && make
 && make install` invocations whose pedagogical content is the LFS sequence
 itself; reading the scripts and the rendered LFS book side-by-side should

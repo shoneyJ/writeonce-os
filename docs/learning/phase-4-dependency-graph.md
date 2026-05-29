@@ -1,6 +1,6 @@
 # Phase 4 — Dependency graph and job-transaction algorithm
 
-> Design companion to [`plan/phase-4-supervisor.md`](../../plan/phase-4-supervisor.md).
+> Design companion to [`plan/done/phase-4-supervisor.md`](../../plan/done/phase-4-supervisor.md).
 > Specifies how the WriteOnce supervisor turns a collection of
 > [`service.toml`](phase-4-service-toml-schema.md) files into an ordered
 > startup plan.

@@ -1,6 +1,6 @@
 # Phase 4 — `service.toml` schema and `WantedBy` semantics
 
-> Design companion to [`plan/phase-4-supervisor.md`](../../plan/phase-4-supervisor.md).
+> Design companion to [`plan/done/phase-4-supervisor.md`](../../plan/done/phase-4-supervisor.md).
 > Specifies the unit-file format the WriteOnce supervisor will consume
 > and how the reverse-dependency mechanism (`WantedBy=` /
 > `RequiredBy=`) maps onto an in-memory dependency graph.

@@ -1,7 +1,7 @@
 # Phase 0 — The cross-toolchain, in short
 
 > Reference companion to [`../../build/02-cross-toolchain.sh`](../../build/02-cross-toolchain.sh)
-> and [`../../plan/phase-0-toolchain.md`](../../plan/phase-0-toolchain.md).
+> and [`../../plan/done/phase-0-toolchain.md`](../../plan/done/phase-0-toolchain.md).
 > Source-of-truth in [LFS book Chapter 5](../../.agents/reference/lfs-rendered.txt) (sections 5.1–5.6).
 
 ## Role

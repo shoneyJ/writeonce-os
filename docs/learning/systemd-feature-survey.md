@@ -1,7 +1,7 @@
 # systemd feature survey — what WriteOnce mirrors and what it deliberately doesn't
 
-> Reference companion to [`plan/phase-3-rust-pid1.md`](../../plan/phase-3-rust-pid1.md)
-> and [`plan/phase-4-supervisor.md`](../../plan/phase-4-supervisor.md).
+> Reference companion to [`plan/done/phase-3-rust-pid1.md`](../../plan/done/phase-3-rust-pid1.md)
+> and [`plan/done/phase-4-supervisor.md`](../../plan/done/phase-4-supervisor.md).
 > A description, not a prescription: this file records what systemd *does*
 > in the areas WriteOnce cares about. Per-area design decisions for the
 > WriteOnce equivalents live in the sibling Phase-4 design docs.

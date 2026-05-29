@@ -26,15 +26,15 @@
 
 | #  | Phase                                                    | Primary language(s)      | Boot-sequence map (notes) | File |
 | -- | -------------------------------------------------------- | ------------------------ | ------------------------- | ---- |
-| 0  | Workstation cross-compile environment                    | Bash / Make              | (host-side prep)          | [phase-0-toolchain.md](phase-0-toolchain.md) |
-| 1  | T450 prep — rescue USB, disk plan, console               | Bash                     | (target-side prep)        | [phase-1-target-prep.md](phase-1-target-prep.md) |
-| 2  | LFS-style minimal Linux (mainline kernel + BusyBox init) | C / ASM via stock kernel | ⑧⑨⑩⑫⑬ (transitional)      | [phase-2-minimal-linux.md](phase-2-minimal-linux.md) |
-| 3  | Rust PID 1                                               | Rust (std-light)         | ⑬                         | [phase-3-rust-pid1.md](phase-3-rust-pid1.md) |
-| 4  | Rust service supervisor + cgroup v2 + minimal logind     | Rust (tokio)             | ⑭                         | [phase-4-supervisor.md](phase-4-supervisor.md) |
-| 5  | Rust initramfs                                           | Rust (std/musl-static)   | ⑫                         | [phase-5-initramfs.md](phase-5-initramfs.md) |
-| 6  | Rust UEFI bootloader (uefi-rs)                           | Rust (no_std)            | ⑥⑦                        | [phase-6-bootloader.md](phase-6-bootloader.md) |
-| 7  | Kernel customization + Rust kernel module                | C / ASM / Rust           | ⑩⑪                        | [phase-7-kernel.md](phase-7-kernel.md) |
-| 8  | X11/i3 userspace + GTK4 stack                            | C (Xorg) + curated       | ⑮ (X11 server side)       | [phase-8-x11-gtk4.md](phase-8-x11-gtk4.md) |
+| 0  | Workstation cross-compile environment                    | Bash / Make              | (host-side prep)          | [phase-0-toolchain.md](done/phase-0-toolchain.md) |
+| 1  | T450 prep — rescue USB, disk plan, console               | Bash                     | (target-side prep)        | [phase-1-target-prep.md](done/phase-1-target-prep.md) |
+| 2  | LFS-style minimal Linux (mainline kernel + BusyBox init) | C / ASM via stock kernel | ⑧⑨⑩⑫⑬ (transitional)      | [phase-2-minimal-linux.md](done/phase-2-minimal-linux.md) |
+| 3  | Rust PID 1                                               | Rust (std-light)         | ⑬                         | [phase-3-rust-pid1.md](done/phase-3-rust-pid1.md) |
+| 4  | Rust service supervisor + cgroup v2 + minimal logind     | Rust (tokio)             | ⑭                         | [phase-4-supervisor.md](done/phase-4-supervisor.md) |
+| 5  | Rust initramfs                                           | Rust (std/musl-static)   | ⑫                         | [phase-5-initramfs.md](done/phase-5-initramfs.md) |
+| 6  | Rust UEFI bootloader (uefi-rs)                           | Rust (no_std)            | ⑥⑦                        | [phase-6-bootloader.md](done/phase-6-bootloader.md) |
+| 7  | Kernel customization + Rust kernel module                | C / ASM / Rust           | ⑩⑪                        | [phase-7-kernel.md](done/phase-7-kernel.md) |
+| 8  | X11/i3 userspace + GTK4 stack                            | C (Xorg) + curated       | ⑮ (X11 server side)       | [phase-8-x11-gtk4.md](done/phase-8-x11-gtk4.md) |
 | 9  | i3More integration + login/DM flow                       | Rust                     | ⑮ (DE side)               | [phase-9-i3more.md](phase-9-i3more.md) |
 | 10 | Packaging, reproducibility, install ISO                  | Rust + custom            | (meta)                    | [phase-10-packaging.md](phase-10-packaging.md) |
 

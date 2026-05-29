@@ -1,6 +1,6 @@
 # Phase 4 — cgroup-v2 service isolation via `clone3(CLONE_INTO_CGROUP)`
 
-> Design companion to [`plan/phase-4-supervisor.md`](../../plan/phase-4-supervisor.md).
+> Design companion to [`plan/done/phase-4-supervisor.md`](../../plan/done/phase-4-supervisor.md).
 > Describes the placement model the WriteOnce supervisor will use to
 > launch services into their own cgroups atomically.
 

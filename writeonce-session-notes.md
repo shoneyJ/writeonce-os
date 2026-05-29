@@ -189,7 +189,7 @@ Phase  ⑮    Rust + C  ← i3More (Rust/GTK4) on Xorg + i3 (C)
 
 ### Correction: Phase ⑮ is X11, not Wayland
 
-Initial draft assumed a smithay/Wayland compositor at ⑮. Surveying the actual DE (`.agents/reference/i3More/`) shows i3More is built **on X11 / i3 / GTK4**, not Wayland. The OS therefore needs Xorg + i3 + D-Bus + PAM + a logind-compatible D-Bus surface + PipeWire — see `plan/phase-8-x11-gtk4.md` and `plan/phase-9-i3more.md` for the corrected userspace stack. The Rust phase-⑮ ownership stays (i3More itself is Rust); the *substrate* below it is X11/C, not Wayland/Rust.
+Initial draft assumed a smithay/Wayland compositor at ⑮. Surveying the actual DE (`.agents/reference/i3More/`) shows i3More is built **on X11 / i3 / GTK4**, not Wayland. The OS therefore needs Xorg + i3 + D-Bus + PAM + a logind-compatible D-Bus surface + PipeWire — see `plan/done/phase-8-x11-gtk4.md` and `plan/phase-9-i3more.md` for the corrected userspace stack. The Rust phase-⑮ ownership stays (i3More itself is Rust); the *substrate* below it is X11/C, not Wayland/Rust.
 
 ### Hard boundary
 

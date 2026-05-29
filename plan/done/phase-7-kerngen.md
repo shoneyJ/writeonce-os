@@ -203,8 +203,8 @@ the project has a known-good baseline to compare against.
 
 ## Cross-references
 
-- [`plan/phase-7-kernel.md`](phase-7-kernel.md) — overall Phase 7 design
-- [`docs/learning/t450-boot-debugging.md`](../docs/learning/t450-boot-debugging.md) — the bring-up pain that motivated this design
+- [`plan/done/phase-7-kernel.md`](phase-7-kernel.md) — overall Phase 7 design
+- [`docs/learning/t450-boot-debugging.md`](../../docs/learning/t450-boot-debugging.md) — the bring-up pain that motivated this design
 - `kernel-base.config` + `kernel-config-additions.fragment` — current
   hand-curated approach this will eventually supersede
 - linuxhw.io — community probe corpus
