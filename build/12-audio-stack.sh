@@ -42,7 +42,8 @@ step_lua() {
     # Lua's upstream uses a hand-rolled Makefile rather than autotools.
     # No --host / --build options. Cross-compile via CC/AR/RANLIB env
     # overrides and the "linux" Makefile target.
-    local name=lua sentinel="$LOGS/.done-blfs-$name"
+    local name=lua
+    local sentinel="$LOGS/.done-blfs-$name"
     if [[ -f "$sentinel" ]]; then
         echo "skip $name (already built)"
         return 0
@@ -146,7 +147,7 @@ step_wireplumber() {
     # default-sink/source policy, application stream rules. Policy is
     # expressed in Lua scripts shipped under /usr/share/wireplumber/.
     build_meson wireplumber "wireplumber-${WIREPLUMBER_VERSION}.tar.gz" \
-        -Ddocumentation=disabled \
+        -Ddoc=disabled \
         -Dintrospection=disabled \
         -Dtests=false \
         -Dsystem-lua=true \

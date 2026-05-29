@@ -41,6 +41,105 @@ source ./blfs-pkg.sh
 # ell — Intel's Embedded Linux Library
 # ============================================================================
 
+step_libcap() {
+    # POSIX capabilities (libcap.so + setcap/getcap binaries). iputils
+    # links libcap for CAP_NET_RAW so ping can run unprivileged. Uses a
+    # hand-rolled Makefile, not autotools; cross via env overrides.
+    local name=libcap
+    local sentinel="$LOGS/.done-blfs-$name"
+    if [[ -f "$sentinel" ]]; then echo "skip $name"; return 0; fi
+    echo; echo "==== blfs: $name ===="
+    rm -rf "$BUILD_ROOT/work/$name"; mkdir -p "$BUILD_ROOT/work/$name"
+    tar -xf "$SOURCES/libcap-${LIBCAP_VERSION}.tar.xz" \
+        -C "$BUILD_ROOT/work/$name" --strip-components=1
+    pushd "$BUILD_ROOT/work/$name" >/dev/null
+        # GOLANG=no disables Go bindings (we don't have a Go toolchain).
+        # BUILD_CC must be the HOST cc (not the cross gcc) because the
+        # build step compiles a small `_makenames` helper that runs on
+        # the build machine to generate cap_names.h.
+        make CC="$LFS/tools/bin/${LFS_TGT}-gcc" \
+             AR="$LFS/tools/bin/${LFS_TGT}-ar" \
+             RANLIB="$LFS/tools/bin/${LFS_TGT}-ranlib" \
+             BUILD_CC=/usr/bin/cc                       \
+             GOLANG=no                                   \
+             SHARED=yes                                  \
+             -j"$(nproc)" \
+            2>&1 | tee "$LOGS/blfs-$name-make.log" && \
+        make DESTDIR="$LFS"                             \
+             prefix=/usr                                 \
+             lib=lib                                     \
+             RAISE_SETFCAP=no                            \
+             GOLANG=no                                   \
+             install                                     \
+            2>&1 | tee "$LOGS/blfs-$name-install.log" \
+            || { popd >/dev/null; echo "ERROR: $name failed" >&2; return 1; }
+    popd >/dev/null
+    find "$LFS/usr/lib" -name '*.la' -delete 2>/dev/null
+    touch "$sentinel"
+}
+
+step_readline() {
+    # GNU readline — line editing + history. Required by iwd's iwctl CLI.
+    # Two cross-build subtleties live here:
+    #
+    # 1. Hand-rolled ncurses.pc: LFS Ch.6 built ncurses without
+    #    --enable-pc-files, so readline's auto-generated readline.pc
+    #    lists `Requires.private: ncurses` and downstream
+    #    `pkg-config --exists readline` fails (which is what iwd does,
+    #    not direct linking). Six lines of static .pc + ncursesw / tinfo
+    #    symlinks resolve it.
+    #
+    # 2. SHLIB_LIBS=-lncursesw override at install time: readline 8.2's
+    #    shared-lib Makefile leaves SHLIB_LIBS empty even when configure
+    #    detected the termcap functions in -lncurses. Without the
+    #    override, libreadline.so has no DT_NEEDED on libncursesw, and
+    #    consumers (iwctl) fail to link with undefined tgetent/tputs/etc.
+    #    The LFS recipe for readline 8.2 patches this the same way.
+    local name=readline
+    local sentinel="$LOGS/.done-blfs-$name"
+    if [[ -f "$sentinel" ]]; then echo "skip $name"; return 0; fi
+
+    if [[ ! -f "$LFS/usr/lib/pkgconfig/ncurses.pc" ]]; then
+        install -dDm755 "$LFS/usr/lib/pkgconfig"
+        cat > "$LFS/usr/lib/pkgconfig/ncurses.pc" <<'PC'
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: ncurses
+Description: ncurses 6.x wide-character terminal library
+Version: 6.5
+Libs: -L${libdir} -lncursesw
+Cflags: -I${includedir} -D_XOPEN_SOURCE_EXTENDED
+PC
+        ln -sf ncurses.pc "$LFS/usr/lib/pkgconfig/ncursesw.pc"
+        ln -sf ncurses.pc "$LFS/usr/lib/pkgconfig/tinfo.pc"
+    fi
+
+    echo; echo "==== blfs: $name ===="
+    rm -rf "$BUILD_ROOT/work/$name"; mkdir -p "$BUILD_ROOT/work/$name"
+    tar -xf "$SOURCES/readline-${READLINE_VERSION}.tar.gz" \
+        -C "$BUILD_ROOT/work/$name" --strip-components=1
+    pushd "$BUILD_ROOT/work/$name" >/dev/null
+        ./configure                                       \
+            --prefix=/usr                                 \
+            --host="$LFS_TGT"                             \
+            --build="$(./support/config.guess)"           \
+            --disable-static                              \
+            --with-curses                                 \
+            bash_cv_termcap_lib=libncursesw               \
+            2>&1 | tee "$LOGS/blfs-$name-configure.log" && \
+        make -j"$(nproc)" SHLIB_LIBS="-lncursesw"          \
+            2>&1 | tee "$LOGS/blfs-$name-make.log" && \
+        make DESTDIR="$LFS" SHLIB_LIBS="-lncursesw" install \
+            2>&1 | tee "$LOGS/blfs-$name-install.log" \
+            || { popd >/dev/null; echo "ERROR: $name failed" >&2; return 1; }
+    popd >/dev/null
+    find "$LFS/usr/lib" -name '*.la' -delete 2>/dev/null
+    touch "$sentinel"
+}
+
 step_ell() {
     # Async event loop + crypto + minimal D-Bus client. iwd is built on it.
     # Autoconf with --disable-glib (we don't want to link glib here).
@@ -92,7 +191,8 @@ step_iproute2() {
     # iproute2 uses a hand-rolled Makefile, not autotools. The included
     # configure script is a feature-probe (libbpf? libelf? libcap?) that
     # writes Config. Cross-compile via env overrides.
-    local name=iproute2 sentinel="$LOGS/.done-blfs-$name"
+    local name=iproute2
+    local sentinel="$LOGS/.done-blfs-$name"
     if [[ -f "$sentinel" ]]; then
         echo "skip $name (already built)"
         return 0
@@ -154,7 +254,8 @@ step_dhcpcd() {
     # dhcpcd has a custom configure script (not autoconf). It honours
     # --prefix, --sysconfdir, --libexecdir; --host is accepted but cross
     # compilation needs CC/AR/RANLIB envs.
-    local name=dhcpcd sentinel="$LOGS/.done-blfs-$name"
+    local name=dhcpcd
+    local sentinel="$LOGS/.done-blfs-$name"
     if [[ -f "$sentinel" ]]; then
         echo "skip $name (already built)"
         return 0
@@ -194,6 +295,8 @@ step_dhcpcd() {
 # ============================================================================
 
 STEPS=(
+    libcap
+    readline
     ell
     iwd
     iproute2

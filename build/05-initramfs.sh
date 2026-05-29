@@ -72,28 +72,33 @@ step_initramfs-root() {
     mkdir -p "$INITRAMFS_ROOT"/{bin,sbin,etc,proc,sys,dev,run,tmp,root,old_root}
     mkdir -p "$INITRAMFS_ROOT"/{usr/bin,usr/sbin,lib/modules,lib/firmware}
 
-    cp "$BUILD_ROOT/artifacts/busybox" "$INITRAMFS_ROOT/bin/busybox"
-    chmod +x "$INITRAMFS_ROOT/bin/busybox"
-
-    # Create symlinks for every applet. Use the host's stat of the binary,
-    # since we may not be running on the same arch as the busybox we built.
-    pushd "$INITRAMFS_ROOT/bin" >/dev/null
-        # Standard applet set; busybox --list prints them. Run via qemu-user if
-        # available, otherwise fall back to a curated list.
-        if command -v qemu-x86_64-static >/dev/null 2>&1; then
-            applets=$(qemu-x86_64-static "$BUILD_ROOT/artifacts/busybox" --list)
-        else
-            applets="sh bash ls cp mv rm cat echo mkdir mknod rmdir ln chmod chown
-                     mount umount ifconfig ip route dmesg lsmod modprobe insmod rmmod
-                     dd df du free hostname hwclock init kill killall login mdev nslookup
-                     ping ps reboot poweroff sleep stat sync tar tee touch true false test
-                     udhcpc vi which whoami yes wget"
-        fi
-        for cmd in $applets; do
-            [[ "$cmd" == "busybox" ]] && continue
-            ln -sf busybox "$cmd" 2>/dev/null || true
-        done
-    popd >/dev/null
+    # BusyBox staging — only if we actually built it. Current WriteOnce
+    # design ships writeonce-initramfs (Rust /init) which implements its
+    # own minimal recovery REPL with built-in `ls`/`cat`/`mounts`/etc.
+    # busybox in the initramfs is therefore optional. Skip cleanly if
+    # `step_busybox` never produced a binary.
+    if [[ -x "$BUILD_ROOT/artifacts/busybox" ]]; then
+        cp "$BUILD_ROOT/artifacts/busybox" "$INITRAMFS_ROOT/bin/busybox"
+        chmod +x "$INITRAMFS_ROOT/bin/busybox"
+        pushd "$INITRAMFS_ROOT/bin" >/dev/null
+            if command -v qemu-x86_64-static >/dev/null 2>&1; then
+                applets=$(qemu-x86_64-static "$BUILD_ROOT/artifacts/busybox" --list)
+            else
+                applets="sh bash ls cp mv rm cat echo mkdir mknod rmdir ln chmod chown
+                         mount umount ifconfig ip route dmesg lsmod modprobe insmod rmmod
+                         dd df du free hostname hwclock init kill killall login mdev nslookup
+                         ping ps reboot poweroff sleep stat sync tar tee touch true false test
+                         udhcpc vi which whoami yes wget"
+            fi
+            for cmd in $applets; do
+                [[ "$cmd" == "busybox" ]] && continue
+                ln -sf busybox "$cmd" 2>/dev/null || true
+            done
+        popd >/dev/null
+        echo "    staged BusyBox + applet symlinks"
+    else
+        echo "    BusyBox not built — skipping (Rust /init has built-in REPL)"
+    fi
 
     # Minimal /etc
     cat > "$INITRAMFS_ROOT/etc/passwd" <<'PASS'

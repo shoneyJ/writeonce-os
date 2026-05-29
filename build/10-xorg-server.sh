@@ -107,6 +107,33 @@ step_libxkbfile() {
     build_pkg libxkbfile "libxkbfile-${LIBXKBFILE_VERSION}.tar.xz"
 }
 
+step_font-util() {
+    # Build-time font helpers (bdftopcf, fontc, mkfontscale) referenced by
+    # xorg-server's font-path setup. Provides the `fontutil` pkg-config
+    # file that xorg-server's meson.build queries.
+    build_pkg font-util "font-util-${FONT_UTIL_VERSION}.tar.xz"
+}
+
+step_libxcvt() {
+    # CVT timing-formula library — xorg-server uses it for mode-line
+    # computation. Replaces older libxf86config; required dep since 21.x.
+    build_meson libxcvt "libxcvt-${LIBXCVT_VERSION}.tar.xz"
+}
+
+step_libmd() {
+    # Portable BSD message-digest library (MD5/SHA1/SHA256). xorg-server
+    # picks this over openssl/libgcrypt/nettle when present — smallest
+    # crypto dep with no transitive baggage.
+    build_pkg libmd "libmd-${LIBMD_VERSION}.tar.xz"
+}
+
+step_libXdmcp() {
+    # X Display Manager Control Protocol library — required by xorg-server
+    # (auth/cookie subsystem references xdmcp.pc unconditionally; the
+    # protocol itself can stay unused at runtime).
+    build_pkg libXdmcp "libXdmcp-${LIBXDMCP_VERSION}.tar.xz"
+}
+
 step_libepoxy() {
     # OpenGL function loader. The X server's glamor acceleration uses it
     # to call into mesa-libs' libGL at runtime.
@@ -214,7 +241,9 @@ step_xorg-server() {
         -Dxkb_default_rules=base \
         -Ddocs=false \
         -Ddevel-docs=false \
-        -Dsystemd_logind=false
+        -Dsystemd_logind=false \
+        -Dsecure-rpc=false \
+        -Dxdm-auth-1=false
 }
 
 # ============================================================================
@@ -233,7 +262,7 @@ step_xf86-input-libinput() {
 
 STEPS=(
     eudev
-    libpciaccess libdrm libfontenc libxshmfence libXxf86vm libXfont2 libxkbfile
+    libpciaccess libdrm libfontenc libxshmfence libXxf86vm libXfont2 libxkbfile font-util libxcvt libmd libXdmcp
     libevdev mtdev libinput
     mesa
     libepoxy

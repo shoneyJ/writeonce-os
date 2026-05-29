@@ -40,6 +40,60 @@ source ./blfs-pkg.sh
 # Foundation
 # ============================================================================
 
+step_libtiff() {
+    # TIFF reader/writer — required (not optional) by gtk4 4.16, which
+    # always pulls in the gdk-pixbuf TIFF loader. Configures via cmake;
+    # depends on zlib + libjpeg (both already in $LFS).
+    local name=libtiff
+    local sentinel="$LOGS/.done-blfs-$name"
+    [[ -f "$sentinel" ]] && { echo "skip $name"; return 0; }
+    echo; echo "==== blfs (cmake): $name ===="
+    rm -rf "$BUILD_ROOT/work/$name"; mkdir -p "$BUILD_ROOT/work/$name"
+    tar -xf "$SOURCES/tiff-${LIBTIFF_VERSION}.tar.xz" \
+        -C "$BUILD_ROOT/work/$name" --strip-components=1
+    pushd "$BUILD_ROOT/work/$name" >/dev/null
+        cmake -S . -B build \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_C_COMPILER="$LFS/tools/bin/${LFS_TGT}-gcc" \
+            -DCMAKE_AR="$LFS/tools/bin/${LFS_TGT}-ar" \
+            -DCMAKE_RANLIB="$LFS/tools/bin/${LFS_TGT}-ranlib" \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=x86_64 \
+            -DCMAKE_FIND_ROOT_PATH="$LFS" \
+            -DBUILD_SHARED_LIBS=ON \
+            -Dtiff-tools=OFF \
+            -Dtiff-tests=OFF \
+            -Dtiff-docs=OFF \
+            -Dwebp=OFF \
+            -Dzstd=OFF \
+            -Dlerc=OFF \
+            2>&1 | tee "$LOGS/blfs-$name-configure.log" && \
+        cmake --build build -j"$(nproc)"           2>&1 | tee "$LOGS/blfs-$name-make.log" && \
+        DESTDIR="$LFS" cmake --install build       2>&1 | tee "$LOGS/blfs-$name-install.log" \
+            || { popd >/dev/null; echo "ERROR: $name failed" >&2; return 1; }
+    popd >/dev/null
+    touch "$sentinel"
+}
+
+step_fribidi() {
+    # Unicode Bidirectional Algorithm — required by pango for shaping
+    # mixed LTR/RTL text. Without a system fribidi, pango wraps to a
+    # git clone (fails under --no-network).
+    build_meson fribidi "fribidi-${FRIBIDI_VERSION}.tar.xz" \
+        -Ddocs=false \
+        -Dtests=false
+}
+
+step_pcre2() {
+    # Perl-Compatible Regular Expressions v2 — required by glib's GRegex.
+    # 8-bit variant is what glib links; default behaviour also builds the
+    # JIT engine for performance. Without this, glib's meson wraps to a
+    # network download (fails under --no-network).
+    build_pkg pcre2 "pcre2-${PCRE2_VERSION}.tar.bz2" \
+        --enable-pcre2-8 \
+        --enable-jit
+}
+
 step_glib() {
     # The GLib platform: types, signals, GIO, GVariant, dbus client lib.
     # Don't enable introspection yet — gobject-introspection needs glib
@@ -60,13 +114,20 @@ step_glib() {
 }
 
 step_gobject-introspection() {
-    # The .gir/.typelib generator. Many GNOME packages probe for it at
-    # build time even when not actually used. Cheap to install.
-    build_meson gobject-introspection "gobject-introspection-${GOBJECT_INTROSPECTION_VERSION}.tar.xz" \
-        -Dbuild_introspection_data=false \
-        -Ddoctool=disabled \
-        -Dcairo=disabled \
-        -Dpython=python3
+    # SKIPPED for cross-compile.
+    #
+    # gobject-introspection produces .gir/.typelib metadata at build time
+    # by COMPILING and RUNNING a probe binary against each target library.
+    # In a cross-build the probe is target-architecture but must execute
+    # on the build machine, which only works under qemu-user emulation
+    # (we don't ship that) or with a pre-installed target Python whose
+    # python-3.12.pc lands in $LFS.
+    #
+    # i3More uses static gtk4-rs bindings (compile-time FFI from .gir
+    # cached in the gtk4-sys crate), so no runtime introspection is
+    # required. Every downstream package (pango, gdk-pixbuf, gtk4)
+    # is configured with -Dintrospection=disabled.
+    echo "  skipping gobject-introspection (not needed for static gtk4-rs)"
 }
 
 # ============================================================================
@@ -148,13 +209,14 @@ step_graphene() {
 step_shared-mime-info() {
     # File-type detection by content + extension. Required at runtime by
     # GTK file choosers + many other apps.
-    build_meson shared-mime-info "shared-mime-info-${SHARED_MIME_INFO_VERSION}.tar.xz" \
+    build_meson shared-mime-info "shared-mime-info-${SHARED_MIME_INFO_VERSION}.tar.gz" \
         -Dupdate-mimedb=true
 }
 
 step_hicolor-icon-theme() {
-    # Spec-mandated fallback icon theme. Pure data, no library; autoconf.
-    build_pkg hicolor-icon-theme "hicolor-icon-theme-${HICOLOR_ICON_THEME_VERSION}.tar.xz"
+    # Spec-mandated fallback icon theme. Pure data, no library. 0.18
+    # switched from autoconf to meson — no config.guess in the tarball.
+    build_meson hicolor-icon-theme "hicolor-icon-theme-${HICOLOR_ICON_THEME_VERSION}.tar.xz"
 }
 
 step_adwaita-icon-theme() {
@@ -183,9 +245,7 @@ step_gtk4() {
         -Dintrospection=disabled \
         -Ddocumentation=false \
         -Dman-pages=false \
-        -Dgtk_doc=false \
         -Dmedia-gstreamer=disabled \
-        -Dmedia-ffmpeg=disabled \
         -Dprint-cups=disabled \
         -Dprint-cpdb=disabled \
         -Dcolord=disabled \
@@ -200,7 +260,8 @@ step_gtk4() {
 # ============================================================================
 
 STEPS=(
-    glib gobject-introspection
+    pcre2 fribidi libtiff
+    glib
     harfbuzz cairo pango
     gdk-pixbuf graphene
     shared-mime-info hicolor-icon-theme adwaita-icon-theme

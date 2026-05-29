@@ -58,9 +58,23 @@ step_kernel-extract() {
 
 step_kernel-config() {
     [[ -f "$FRAGMENT" ]] || { echo "missing fragment: $FRAGMENT"; return 1; }
+    # Base config: prefer build/kernel-base.config (Ubuntu's stable-LTS
+    # config, stripped of distro-specific cert references). This gives
+    # us thousands of hardware-compat options the Broadwell/Aptio-V
+    # T450 needs that `defconfig` doesn't enable.
+    # If kernel-base.config isn't present, fall back to defconfig — that
+    # was the original path; useful for minimal builds + understanding
+    # bare-defconfig deltas.
+    local BASE="$BUILD_ROOT/kernel-base.config"
     pushd "$KERNEL_WORK" >/dev/null
         make "${CROSS[@]}" mrproper          2>&1 | tee "$LOGS/kernel-mrproper.log"
-        make "${CROSS[@]}" defconfig         2>&1 | tee "$LOGS/kernel-defconfig.log"
+        if [[ -f "$BASE" ]]; then
+            echo "    base: $BASE ($(wc -l < "$BASE") lines, distro-derived)"
+            cp "$BASE" .config
+        else
+            echo "    base: defconfig (no kernel-base.config present)"
+            make "${CROSS[@]}" defconfig     2>&1 | tee "$LOGS/kernel-defconfig.log"
+        fi
         ./scripts/kconfig/merge_config.sh -m .config "$FRAGMENT" \
                                               2>&1 | tee "$LOGS/kernel-mergeconfig.log"
         make "${CROSS[@]}" olddefconfig      2>&1 | tee "$LOGS/kernel-olddefconfig.log"
@@ -70,11 +84,18 @@ step_kernel-config() {
 }
 
 step_kernel-build() {
+    # `make … | tee` masks make's exit unless we check PIPESTATUS or
+    # chain explicitly. Without this, a failing build (e.g. missing
+    # `bc` in the container blowing up timeconst.h generation) gets
+    # rubber-stamped by the `cp` afterwards, which silently no-ops on
+    # a missing bzImage — leaving an ancient stub bzImage in
+    # artifacts/ that boots into an old kernel.
     pushd "$KERNEL_WORK" >/dev/null
         make "${CROSS[@]}" -j"$(nproc)" bzImage modules \
-                                              2>&1 | tee "$LOGS/kernel-build.log"
-        cp arch/x86/boot/bzImage "$BUILD_ROOT/artifacts/bzImage"
-        echo "    bzImage: $(du -h $BUILD_ROOT/artifacts/bzImage | awk '{print $1}')"
+                                              2>&1 | tee "$LOGS/kernel-build.log" && \
+        cp arch/x86/boot/bzImage "$BUILD_ROOT/artifacts/bzImage" && \
+        echo "    bzImage: $(du -h $BUILD_ROOT/artifacts/bzImage | awk '{print $1}')" \
+            || { popd >/dev/null; echo "ERROR: kernel-build failed" >&2; return 1; }
     popd >/dev/null
 }
 

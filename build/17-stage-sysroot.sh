@@ -70,10 +70,35 @@ chmod 1777 "$STAGING"/tmp
 echo
 echo "==== [2/8] Copying \$LFS/usr (~hundreds of MB) ..."
 cp -a "$LFS/usr"/. "$STAGING/usr/"
+
+# Some Phase 8 packages whose --libdir defaults to /lib64 (linux-pam,
+# possibly others) install OUTSIDE $LFS/usr/. The UsrMerge symlinks
+# below (lib64 → usr/lib) don't help on their own — they only resolve
+# if the files actually live at usr/lib. Merge those strays into the
+# canonical location.
+#
+# Discovered via the May-2026 boot failure where writeonce-login died
+# with `libpam.so.0: cannot open shared object file` — libpam was in
+# $LFS/lib64/ but never copied into the staged artifact.
+for src in "$LFS/lib64" "$LFS/lib"; do
+    if [[ -d "$src" ]]; then
+        echo "    merging $src/ → $STAGING/usr/lib/"
+        cp -a "$src"/. "$STAGING/usr/lib/" 2>/dev/null || true
+    fi
+done
+
 # Symlinks /bin and /sbin to /usr/bin per modern UsrMerge convention.
 ln -sf usr/bin  "$STAGING/bin"
 ln -sf usr/sbin "$STAGING/sbin"
 ln -sf usr/lib  "$STAGING/lib"
+
+# POSIX requires /bin/sh. Point it at bash (the only shell we ship).
+# Without this, anything that execve's /bin/sh fails with ENOENT —
+# including writeonce-pid1's prototype placeholder and shebangs in
+# /etc/init.d scripts a sysadmin might add later.
+if [[ -e "$STAGING/usr/bin/bash" && ! -e "$STAGING/usr/bin/sh" ]]; then
+    ln -sf bash "$STAGING/usr/bin/sh"
+fi
 ln -sf usr/lib  "$STAGING/lib64"
 
 # ---- 3. install Rust boot-path binaries ------------------------------------
@@ -223,6 +248,26 @@ devpts      /dev/pts  devpts    gid=5,mode=620  0 0
 tmpfs       /tmp      tmpfs     defaults,nodev,nosuid  0 0
 tmpfs       /run      tmpfs     defaults,nodev,nosuid  0 0
 EOF
+
+
+# ---- 7. install kernel firmware blobs --------------------------------------
+# The kernel's iwlwifi driver issues request_firmware() AFTER switch_root, so
+# the blobs must live in the *real* rootfs, not just the initramfs. 01-fetch.sh
+# drops them at $BUILD_ROOT/firmware/. We copy verbatim into /lib/firmware/.
+echo
+echo "==== [7/8] Kernel firmware"
+FW_SRC="${BUILD_ROOT:-build}/firmware"
+if compgen -G "$FW_SRC/*" >/dev/null 2>&1; then
+    mkdir -p "$STAGING/lib/firmware"
+    for fw in "$FW_SRC"/*; do
+        name="$(basename "$fw")"
+        install -Dm644 "$fw" "$STAGING/lib/firmware/$name"
+        echo "    $name"
+    done
+else
+    echo "    WARN: $FW_SRC is empty — run \`./build/01-fetch.sh\` to populate it."
+    echo "    Without firmware, iwlwifi will fail to bind to wifi hardware on boot."
+fi
 
 echo
 echo "Staging complete. Size:"

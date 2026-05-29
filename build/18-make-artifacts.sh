@@ -57,21 +57,51 @@ else
 fi
 
 # ---- 3. UEFI bootloader ----------------------------------------------------
+# Our Rust writeonce-bootloader is the primary BOOTX64.EFI. GRUB was
+# tried but `grub-mkstandalone`'s output is rejected by the T450's
+# Aptio-V firmware (loads → instant exit → firmware falls back to next
+# boot entry, no diagnostic). The Rust loader is known-good on this
+# firmware (verified by its on-screen step progress).
+#
+# We also stage the GRUB binary at \EFI\grub\grubx64.efi on the ESP —
+# accessible from the firmware F12 menu and still works in QEMU. Kept
+# for the multi-entry menu UX when we eventually port to a firmware
+# that accepts it.
 echo
 echo "==== [3/5] Staging UEFI bootloader"
-BOOTLOADER_SRC="${BOOTLOADER_EFI:-target/x86_64-unknown-uefi/release/writeonce-bootloader.efi}"
-if [[ -f "$BOOTLOADER_SRC" ]]; then
-    install -m644 "$BOOTLOADER_SRC" "$OUT/BOOTX64.EFI"
-    echo "    $BOOTLOADER_SRC → $OUT/BOOTX64.EFI"
+RUST_BOOTLOADER="${BOOTLOADER_EFI:-target/x86_64-unknown-uefi/release/writeonce-bootloader.efi}"
+if [[ -f "$RUST_BOOTLOADER" ]]; then
+    install -m644 "$RUST_BOOTLOADER" "$OUT/BOOTX64.EFI"
+    echo "    Rust bootloader → $OUT/BOOTX64.EFI ($(du -h "$OUT/BOOTX64.EFI" | awk '{print $1}'))"
 else
-    echo "    error: writeonce-bootloader.efi not built. Run cargo build --release --target x86_64-unknown-uefi -p writeonce-bootloader first." >&2
+    echo "    error: $RUST_BOOTLOADER not built — run cargo build --release --target x86_64-unknown-uefi -p writeonce-bootloader" >&2
     exit 1
+fi
+
+# Stage GRUB as a secondary boot option.
+GRUB_CFG="${GRUB_CFG:-build/skeleton/boot/grub/grub.cfg}"
+if [[ -f "$GRUB_CFG" ]] && command -v grub-mkstandalone >/dev/null; then
+    grub-mkstandalone \
+        --format=x86_64-efi \
+        --output="$OUT/grubx64.efi" \
+        --locales="" --themes="" --fonts="" \
+        --modules="part_gpt fat ext2 normal configfile linux echo all_video efi_gop efi_uga search search_label search_fs_uuid loadenv test true font gettext gfxterm chain reboot halt" \
+        "boot/grub/grub.cfg=$GRUB_CFG"
+    echo "    GRUB (secondary) → $OUT/grubx64.efi (alt — F12 → \\EFI\\grub\\)"
 fi
 
 # ---- 4. tar + zstd the sysroot --------------------------------------------
 echo
 echo "==== [4/5] Compressing sysroot (tar + zstd -19) ..."
-tar -cf - -C "$STAGING" . | zstd -19 -T0 -q -o "$OUT/sysroot.tar.zst"
+# --owner=0 --group=0 --numeric-owner: force every file in the tarball
+# to uid/gid 0 regardless of the on-disk ownership (which is uid 1000
+# because the build container runs unprivileged). The installer extracts
+# with preserve_ownerships=true and lands files as root on the target.
+# The few paths that need a non-root owner (/home/<user>, /var/cache/*)
+# are fixed by writeonce-installer's customize.rs chown_recursive step
+# AFTER extract.
+tar --owner=0 --group=0 --numeric-owner -cf - -C "$STAGING" . | \
+    zstd -19 -T0 -f -q -o "$OUT/sysroot.tar.zst"
 ls -lh "$OUT/sysroot.tar.zst"
 
 # ---- 5. compute SHA-256s + write manifest.toml ----------------------------
@@ -96,7 +126,18 @@ kernel     = "bzImage"
 initramfs  = "initramfs.img"
 bootloader = "BOOTX64.EFI"
 sysroot    = "sysroot.tar.zst"
-cmdline    = "console=tty0 root=UUID=__ROOT_UUID__ rw quiet init=/usr/sbin/writeonce-pid1"
+# NOTE: This cmdline field is now LARGELY UNUSED — we ship GRUB which
+# embeds its own grub.cfg with per-entry cmdlines (see
+# build/skeleton/boot/grub/grub.cfg). The installer still substitutes
+# __ROOT_UUID__ in case anything else reads this field.
+# rootwait is essential when booting from removable media — USB
+# enumeration can take a second or two and the kernel needs to wait.
+# `rootwait` is the kernel's own flag; `writeonce.rootwait=N` is the
+# initramfs's polling-timeout knob (see crates/writeonce-initramfs/src/
+# cmdline.rs). Both belong here because writeonce-initramfs replaces
+# the kernel's mount logic — without our flag the initramfs scans
+# /sys/class/block once and gives up before USB enumeration completes.
+cmdline    = "console=tty0 rootwait writeonce.rootwait=30 root=UUID=__ROOT_UUID__ rw init=/usr/sbin/writeonce-pid1"
 
 [verification]
 kernel_sha256     = "$(sha "$OUT/bzImage")"

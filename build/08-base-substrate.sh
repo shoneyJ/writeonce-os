@@ -186,6 +186,12 @@ step_libjpeg-turbo() {
     tar -xf "$SOURCES/libjpeg-turbo-${LIBJPEG_TURBO_VERSION}.tar.gz" \
         -C "$BUILD_ROOT/work/$name" --strip-components=1
     pushd "$BUILD_ROOT/work/$name" >/dev/null
+        # Chain with && so a configure / build / install failure aborts
+        # before the sentinel is touched. Earlier this step produced a
+        # phantom .done-blfs-libjpeg-turbo without ever installing
+        # anything because the three cmake calls weren't chained and
+        # the configure step silently failed (missing CMAKE_SYSTEM_PROCESSOR
+        # → SIMD detection blew up → Makefile never generated).
         cmake -S . -B build \
             -DCMAKE_INSTALL_PREFIX=/usr \
             -DCMAKE_C_COMPILER="$LFS/tools/bin/${LFS_TGT}-gcc" \
@@ -193,9 +199,12 @@ step_libjpeg-turbo() {
             -DCMAKE_RANLIB="$LFS/tools/bin/${LFS_TGT}-ranlib" \
             -DENABLE_STATIC=OFF \
             -DCMAKE_SYSTEM_NAME=Linux \
-            2>&1 | tee "$LOGS/blfs-$name-configure.log"
-        cmake --build build -j"$(nproc)"           2>&1 | tee "$LOGS/blfs-$name-make.log"
-        DESTDIR="$LFS" cmake --install build       2>&1 | tee "$LOGS/blfs-$name-install.log"
+            -DCMAKE_SYSTEM_PROCESSOR=x86_64 \
+            -DCMAKE_FIND_ROOT_PATH="$LFS" \
+            2>&1 | tee "$LOGS/blfs-$name-configure.log" && \
+        cmake --build build -j"$(nproc)"           2>&1 | tee "$LOGS/blfs-$name-make.log" && \
+        DESTDIR="$LFS" cmake --install build       2>&1 | tee "$LOGS/blfs-$name-install.log" \
+            || { popd >/dev/null; echo "ERROR: $name failed" >&2; return 1; }
     popd >/dev/null
     touch "$sentinel"
 }
@@ -236,7 +245,60 @@ step_linux-pam() {
         --enable-securedir=/usr/lib/security
 }
 
-# ---- 12. dbus ----------------------------------------------------------------
+# ---- 12. sudo ----------------------------------------------------------------
+step_sudo() {
+    # Privilege elevation for the wheel group. PAM-aware (links the same
+    # libpam.so we built in step_linux-pam). Build-time options:
+    #   --without-{lecture,sendmail,interfaces,passwd}: drop optional
+    #     subsystems we don't ship. Keeps the binary small.
+    #   --with-secure-path: hardcoded PATH used when sudo is invoked,
+    #     so `sudo somecmd` always resolves against a known set.
+    #   --enable-shell-sets-home: `sudo -i` sets HOME to root's home.
+    #
+    # /etc/sudoers ships from build/skeleton/etc/sudoers — the
+    # %wheel ALL=(ALL) ALL line is what grants the install-time
+    # user privilege escalation via their own password.
+    # sudo's make install does `install -o root -g root -m 4755` to set
+    # setuid root on the binary and root:root on /etc/sudoers. Both
+    # chown operations fail with EPERM when the build runs as uid 1000.
+    # The fakeroot wrapper intercepts chown/lchown and records the
+    # intended uid/gid in its in-memory database; the file on disk
+    # stays uid 1000 BUT subsequent fakeroot operations (tar, ls, stat)
+    # report uid 0. step_make_artifacts pipes through `fakeroot tar`
+    # so the tarball records the simulated root ownership, which the
+    # installer (running as real root on the target) materialises.
+    local name=sudo
+    local sentinel="$LOGS/.done-blfs-$name"
+    if [[ -f "$sentinel" ]]; then echo "skip $name"; return 0; fi
+    echo; echo "==== blfs: $name (fakeroot) ===="
+    rm -rf "$BUILD_ROOT/work/$name"; mkdir -p "$BUILD_ROOT/work/$name"
+    tar -xf "$SOURCES/sudo-${SUDO_VERSION}.tar.gz" \
+        -C "$BUILD_ROOT/work/$name" --strip-components=1
+    pushd "$BUILD_ROOT/work/$name" >/dev/null
+        ./configure \
+            --prefix=/usr \
+            --host="$LFS_TGT" \
+            --build="$(./scripts/mkpkg --getbuild 2>/dev/null || ./config.guess)" \
+            --sysconfdir=/etc \
+            --with-secure-path="/usr/sbin:/usr/bin:/sbin:/bin" \
+            --enable-shell-sets-home \
+            --with-rundir=/run/sudo \
+            --with-vardir=/var/db/sudo \
+            --disable-static \
+            --disable-zlib \
+            --without-sendmail \
+            --without-interfaces \
+            2>&1 | tee "$LOGS/blfs-$name-configure.log" && \
+        make -j"$(nproc)" 2>&1 | tee "$LOGS/blfs-$name-make.log" && \
+        fakeroot -- make DESTDIR="$LFS" install \
+                                      2>&1 | tee "$LOGS/blfs-$name-install.log" \
+            || { popd >/dev/null; echo "ERROR: $name failed" >&2; return 1; }
+    popd >/dev/null
+    find "$LFS/usr/lib" -name '*.la' -delete 2>/dev/null
+    touch "$sentinel"
+}
+
+# ---- 13. dbus ----------------------------------------------------------------
 step_dbus() {
     # dbus 1.16+ uses meson, not autotools.
     build_meson dbus "dbus-${DBUS_VERSION}.tar.xz" \
@@ -255,7 +317,7 @@ step_dbus() {
 # ---- driver -----------------------------------------------------------------
 
 STEPS=( zlib zstd brotli expat libffi libxml2 util-macros libpng libjpeg-turbo libxcrypt
-        freetype fontconfig linux-pam dbus )
+        freetype fontconfig linux-pam sudo dbus )
 
 if [[ $# -eq 0 ]]; then
     for s in "${STEPS[@]}"; do

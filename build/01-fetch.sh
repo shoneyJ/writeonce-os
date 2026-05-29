@@ -32,6 +32,13 @@ declare -A URLS=(
 
     [linux-${LINUX_VERSION}.tar.xz]="https://cdn.kernel.org/pub/linux/kernel/v${LINUX_MAJOR}/linux-${LINUX_VERSION}.tar.xz"
 
+    # Intel 7265 wifi firmware — both stepping variants. The T450 ships either
+    # the original 7265 or the D-step revision; we fetch both since they're
+    # ~1 MiB each. linux-firmware reorganised in 2024 — files live under
+    # intel/iwlwifi/ now, no longer at repo root.
+    [iwlwifi-7265-17.ucode]="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/intel/iwlwifi/iwlwifi-7265-17.ucode?id=${LINUX_FIRMWARE_COMMIT}"
+    [iwlwifi-7265D-29.ucode]="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/intel/iwlwifi/iwlwifi-7265D-29.ucode?id=${LINUX_FIRMWARE_COMMIT}"
+
     [m4-${M4_VERSION}.tar.xz]="https://ftpmirror.gnu.org/m4/m4-${M4_VERSION}.tar.xz"
     [ncurses-${NCURSES_VERSION}.tar.gz]="https://invisible-mirror.net/archives/ncurses/ncurses-${NCURSES_VERSION}.tar.gz"
     [bash-${BASH_VERSION}.tar.gz]="https://ftpmirror.gnu.org/bash/bash-${BASH_VERSION}.tar.gz"
@@ -67,6 +74,7 @@ declare -A URLS=(
     [Linux-PAM-${LINUX_PAM_VERSION}.tar.xz]="https://github.com/linux-pam/linux-pam/releases/download/v${LINUX_PAM_VERSION}/Linux-PAM-${LINUX_PAM_VERSION}.tar.xz"
     [libxcrypt-${LIBXCRYPT_VERSION}.tar.xz]="https://github.com/besser82/libxcrypt/releases/download/v${LIBXCRYPT_VERSION}/libxcrypt-${LIBXCRYPT_VERSION}.tar.xz"
     [dbus-${DBUS_VERSION}.tar.xz]="https://dbus.freedesktop.org/releases/dbus/dbus-${DBUS_VERSION}.tar.xz"
+    [sudo-${SUDO_VERSION}.tar.gz]="https://www.sudo.ws/dist/sudo-${SUDO_VERSION}.tar.gz"
     [zstd-${ZSTD_VERSION}.tar.gz]="https://github.com/facebook/zstd/releases/download/v${ZSTD_VERSION}/zstd-${ZSTD_VERSION}.tar.gz"
 
     # --- Phase 8 / Round 2 — X11 stack ---
@@ -116,6 +124,13 @@ declare -A URLS=(
     [libepoxy-${LIBEPOXY_VERSION}.tar.gz]="https://github.com/anholt/libepoxy/archive/refs/tags/${LIBEPOXY_VERSION}.tar.gz"
     [pixman-${PIXMAN_VERSION}.tar.gz]="https://cairographics.org/releases/pixman-${PIXMAN_VERSION}.tar.gz"
     [libxkbfile-${LIBXKBFILE_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libxkbfile-${LIBXKBFILE_VERSION}.tar.xz"
+    [font-util-${FONT_UTIL_VERSION}.tar.xz]="https://www.x.org/releases/individual/font/font-util-${FONT_UTIL_VERSION}.tar.xz"
+    [libxcvt-${LIBXCVT_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libxcvt-${LIBXCVT_VERSION}.tar.xz"
+    [libmd-${LIBMD_VERSION}.tar.xz]="https://archive.hadrons.org/software/libmd/libmd-${LIBMD_VERSION}.tar.xz"
+    [libXdmcp-${LIBXDMCP_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXdmcp-${LIBXDMCP_VERSION}.tar.xz"
+    [pcre2-${PCRE2_VERSION}.tar.bz2]="https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${PCRE2_VERSION}/pcre2-${PCRE2_VERSION}.tar.bz2"
+    [fribidi-${FRIBIDI_VERSION}.tar.xz]="https://github.com/fribidi/fribidi/releases/download/v${FRIBIDI_VERSION}/fribidi-${FRIBIDI_VERSION}.tar.xz"
+    [tiff-${LIBTIFF_VERSION}.tar.xz]="https://download.osgeo.org/libtiff/tiff-${LIBTIFF_VERSION}.tar.xz"
     [libevdev-${LIBEVDEV_VERSION}.tar.xz]="https://www.freedesktop.org/software/libevdev/libevdev-${LIBEVDEV_VERSION}.tar.xz"
     [mtdev-${MTDEV_VERSION}.tar.bz2]="https://bitmath.org/code/mtdev/mtdev-${MTDEV_VERSION}.tar.bz2"
     # GitLab redirects .tar.xz to an auth page; .tar.gz works directly.
@@ -132,7 +147,9 @@ declare -A URLS=(
     [pango-${PANGO_VERSION}.tar.xz]="https://download.gnome.org/sources/pango/$(echo ${PANGO_VERSION}|cut -d. -f1-2)/pango-${PANGO_VERSION}.tar.xz"
     [gdk-pixbuf-${GDK_PIXBUF_VERSION}.tar.xz]="https://download.gnome.org/sources/gdk-pixbuf/$(echo ${GDK_PIXBUF_VERSION}|cut -d. -f1-2)/gdk-pixbuf-${GDK_PIXBUF_VERSION}.tar.xz"
     [graphene-${GRAPHENE_VERSION}.tar.xz]="https://download.gnome.org/sources/graphene/$(echo ${GRAPHENE_VERSION}|cut -d. -f1-2)/graphene-${GRAPHENE_VERSION}.tar.xz"
-    [shared-mime-info-${SHARED_MIME_INFO_VERSION}.tar.xz]="https://gitlab.freedesktop.org/xdg/shared-mime-info/-/archive/${SHARED_MIME_INFO_VERSION}/shared-mime-info-${SHARED_MIME_INFO_VERSION}.tar.xz"
+    # GitLab archive endpoint returns an HTML login page for the .tar.xz
+    # form (auth flow / rate limit); .tar.gz is served correctly.
+    [shared-mime-info-${SHARED_MIME_INFO_VERSION}.tar.gz]="https://gitlab.freedesktop.org/xdg/shared-mime-info/-/archive/${SHARED_MIME_INFO_VERSION}/shared-mime-info-${SHARED_MIME_INFO_VERSION}.tar.gz"
     [hicolor-icon-theme-${HICOLOR_ICON_THEME_VERSION}.tar.xz]="https://icon-theme.freedesktop.org/releases/hicolor-icon-theme-${HICOLOR_ICON_THEME_VERSION}.tar.xz"
     # adwaita-icon-theme uses single-major-component path under
     # download.gnome.org (47, not 47.0) — unlike glib/gtk (2.82, 4.16).
@@ -152,6 +169,8 @@ declare -A URLS=(
     # comment for Phase 9 + docs/learning/phase-9-desktop-bringup.md.
 
     # --- Phase 8 / Round 6 — network stack ---
+    [readline-${READLINE_VERSION}.tar.gz]="https://ftp.gnu.org/gnu/readline/readline-${READLINE_VERSION}.tar.gz"
+    [libcap-${LIBCAP_VERSION}.tar.xz]="https://mirrors.edge.kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-${LIBCAP_VERSION}.tar.xz"
     [ell-${ELL_VERSION}.tar.xz]="https://mirrors.edge.kernel.org/pub/linux/libs/ell/ell-${ELL_VERSION}.tar.xz"
     [iwd-${IWD_VERSION}.tar.xz]="https://mirrors.edge.kernel.org/pub/linux/network/wireless/iwd-${IWD_VERSION}.tar.xz"
     [iproute2-${IPROUTE2_VERSION}.tar.xz]="https://mirrors.edge.kernel.org/pub/linux/utils/net/iproute2/iproute2-${IPROUTE2_VERSION}.tar.xz"
@@ -268,6 +287,21 @@ for base in "${!URLS[@]}"; do
         sha_failures+=("$base")
     else
         echo "    sha256: OK"
+    fi
+done
+
+# --- post-loop: stage firmware blobs into $BUILD_ROOT/firmware/ -------------
+# 05-initramfs.sh and 17-stage-sysroot.sh both look for fetched firmware at
+# $BUILD_ROOT/firmware/<file>, not under sources/. Copy the .ucode files we
+# verified above into that path so the downstream scripts see them.
+FW_OUT="$BUILD_ROOT/firmware"
+mkdir -p "$FW_OUT"
+for fw in "$SOURCES"/iwlwifi-*.ucode; do
+    [[ -f "$fw" ]] || continue
+    name="$(basename "$fw")"
+    if [[ ! -f "$FW_OUT/$name" ]] || ! cmp -s "$fw" "$FW_OUT/$name"; then
+        cp "$fw" "$FW_OUT/$name"
+        echo "    firmware -> $FW_OUT/$name"
     fi
 done
 

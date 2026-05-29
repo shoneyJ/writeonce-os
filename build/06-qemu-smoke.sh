@@ -2,7 +2,7 @@
 # build/06-qemu-smoke.sh — boot the freshly-built kernel + initramfs in QEMU.
 #
 # Two modes:
-#   ./06-qemu-smoke.sh           interactive serial console (Ctrl+a x to quit)
+#   ./06-qemu-smoke.sh           interactive serial console (Ctrl+] x to quit)
 #   ./06-qemu-smoke.sh --uefi    boot via OVMF (UEFI firmware) instead of legacy
 #
 # Success criterion: kernel decompresses, mounts pseudo-FS, and BusyBox sh
@@ -29,6 +29,10 @@ QEMU_ARGS=(
     -initrd  "$INITRAMFS"
     -append  "console=ttyS0 panic=10"
     -nographic
+    # Move the qemu console escape from Ctrl+a (collides with the common
+    # tmux prefix rebind) to Ctrl+] — same key Telnet uses, never bound
+    # in tmux/screen by default. Exit qemu with: Ctrl+] then x.
+    -echr    29
     -m       2G
     -no-reboot
     -enable-kvm
@@ -43,7 +47,7 @@ else
     echo "Booting WriteOnce kernel + initramfs in QEMU (legacy)…"
 fi
 
-echo "  Ctrl+a x to quit"
+echo "  Ctrl+] x to quit (or Ctrl+] c for qemu monitor)"
 echo "  Expect: BusyBox banner, drop to /bin/sh prompt."
 echo
 exec qemu-system-x86_64 "${QEMU_ARGS[@]}"

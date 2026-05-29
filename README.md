@@ -4,7 +4,156 @@ A from-scratch Linux distribution, built as a learning vehicle for kernel intern
 
 ## Status
 
-Planning. No code yet — the repo currently holds design notes, a target-machine hardware survey, and a phase-by-phase implementation roadmap.
+**Phase 8 complete — 85 packages cross-built.** Phases 0–8 land:
+cross-toolchain, kernel, initramfs, Rust PID 1, supervisor, bootloader,
+Xorg + Mesa (iris), GTK4, alsa-lib + pipewire + wireplumber, ell + iwd
++ iproute2 + iputils + dhcpcd. Kernel rebuilt 2026-05-24 with the 30
+missing CONFIG_* options from `kernel-config-additions.fragment`
+(CONTAINERS, BPF, MICROCODE_INTEL, MISC_RTSX, etc.) — bzImage 14 MB,
+initramfs.img 2.4 MB.
+
+Next: Phase 9 (i3 + i3More integration via `17-stage-sysroot.sh` →
+`18-make-artifacts.sh`).
+
+Quick driver: `just phase-8a` … `just phase-8f` runs each round; on
+failure use `just audit-last` to surface the next missing dep, fix,
+re-run. See `justfile`.
+
+## Phase 8 build fixes (chronological)
+
+Captured here so the next person doesn't re-trial-and-error these.
+
+### Toolchain
+- **gcc-pass2 added.** gcc-pass1 was built `--disable-threads
+  --without-headers --disable-libstdcxx` (pre-glibc bootstrap); the
+  resulting libstdc++ left `_GLIBCXX_HAS_GTHREADS` undefined →
+  `std::mutex` missing → Mesa's `texcompress_astc_luts.h` failed to
+  compile. New `step_gcc-2` in `02-cross-toolchain.sh` rebuilds the
+  cross gcc with `--enable-threads=posix --enable-shared
+  --with-sysroot=$LFS`, then re-runs `step_libstdcxx` against it.
+- **libstdc++ standalone needs gthr-default.h.** Symlinked
+  `libgcc/gthr-posix.h` → `gthr-default.h` before configuring so the
+  `gthreads library` probe finds it (otherwise `_GLIBCXX_HAS_GTHREADS`
+  stays undefined even with threaded gcc).
+- **meson cross-file: `needs_exe_wrapper = true`.** Same-arch cross
+  builds (x86_64 host, x86_64 target) made meson think it could run
+  target binaries on the host. Mesa et al. then linked their build-time
+  helpers (mesa_clc/intel_clc) against host libs via the cross linker,
+  which couldn't resolve transitive deps through `--sysroot=$LFS`. The
+  flag forces native:true on those helpers.
+
+### Mesa
+- **24.3.4 → 24.0.9.** Mesa 24.1+ implicitly forces `intel_clc` when
+  the iris driver is enabled. intel_clc's static-lib deps are
+  host-machine in meson terms, but the executable wants build-machine
+  → "mixed machine" error with no clean workaround. 24.0.9 only builds
+  intel_clc on explicit `-Dintel-clc=enabled`. Broadwell HD 5500 hits
+  the same OpenGL 4.6 / GLSL 4.60 caps on either release.
+- **No LLVM at all.** iris doesn't need LLVM (uses Mesa's in-tree
+  brw_compile C backend). With Mesa 24.0.9 + `-Dllvm=disabled`, the
+  entire LLVM toolchain (libclc, llvm-19-dev, libllvmspirvlib,
+  spirv-tools) dropped from the Containerfile.
+- **Mesa option fixes:** `-Dglvnd=disabled` (feature) → `=false`
+  (boolean); removed `-Dintel-rt`, `-Dinstall-intel-clc`,
+  `-Dlmsensors` (not in 24.0).
+
+### Phase 8 missing packages
+| Pkg | Why | Phase | Source |
+|---|---|---|---|
+| pixman | xorg-server's Render/Composite ext | 8c | cairographics.org |
+| libxkbfile | xorg-server keyboard subsystem | 8c | x.org |
+| font-util | xorg-server's `fontutil.pc` | 8c | x.org |
+| libxcvt | xorg-server mode-line calc | 8c | x.org |
+| libmd | xorg-server SHA1 backend (smallest of md/libsha1/nettle/gcrypt/openssl) | 8c | hadrons.org |
+| libXdmcp | xorg-server `xdmcp.pc` | 8c | x.org |
+| pcre2 | glib's GRegex (no system → wrap downloads → fails offline) | 8d | github.com/PCRE2Project |
+| fribidi | pango bidi text (wrap fallback otherwise) | 8d | github.com/fribidi |
+| libtiff | gtk4 4.16 hardcodes it as required (no flag to disable) | 8d | download.osgeo.org |
+| readline | iwd's iwctl CLI line editor | 8f | gnu.org |
+| libcap | iputils' ping links libcap for CAP_NET_RAW | 8f | mirrors.edge.kernel.org |
+
+### xorg-server option fixes
+- Removed `-Dxwayland=false` — not a valid option in 21.1.x (xwayland
+  is a separate package).
+- `-Ddevel_docs` → `-Ddevel-docs` (dash, not underscore).
+- `-Dsecure-rpc=false` — glibc 2.40 dropped Sun-RPC; libtirpc not
+  built; modern desktops don't use DES auth.
+- `-Dxdm-auth-1=false` — DES-based XDM auth, equally dead.
+
+### Phase 8e (audio) / 8f (network) script bugs
+- **`local A=foo B=$A` doesn't expand `$A` under `set -u`.** Bash
+  evaluates RHS before the local-scope binding exists; result is
+  "name: unbound variable" on the helper-script-locals pattern used
+  for lua / iproute2 / dhcpcd / readline. Split into two `local` lines.
+- **wireplumber option:** `-Ddocumentation=disabled` → `-Ddoc=disabled`
+  (actual upstream option name).
+- **ncurses.pc hand-rolled** before readline. LFS Ch.6 built ncurses
+  without `--enable-pc-files`, so readline's auto-generated .pc lists
+  `Requires.private: ncurses` and downstream `pkg-config --exists
+  readline` fails (which is what iwd does, not direct linking). Six
+  lines of static .pc text + ncursesw.pc / tinfo.pc symlinks resolve it.
+- **readline 8.2 SHLIB_LIBS override.** readline's configure correctly
+  detects `tgetent` in `-lncurses`, but the resulting shared-lib
+  Makefile leaves `SHLIB_LIBS` empty — so `libreadline.so` has no
+  DT_NEEDED on libncursesw and clients (iwctl) fail to link with
+  undefined `tputs`/`tgetent`/etc. Pass `SHLIB_LIBS=-lncursesw` to
+  both `make` and `make install`; also export `bash_cv_termcap_lib`
+  during configure. Same workaround the LFS book uses.
+- **`just audit-last` only sees meson failures.** Autoconf packages
+  (iwd, ell, readline, iproute2, dhcpcd) leave no `meson-log.txt`, so
+  the tool surfaces the *previous* meson failure instead. For autoconf
+  failures, read `build/logs/blfs-<pkg>-configure.log` directly — the
+  "stopping at <pkg>" line in the build output names the right package.
+
+### GTK4 stack
+- **gobject-introspection dropped from STEPS.** Genuinely hostile to
+  cross-compile (probes target-arch binaries that must run on the
+  build machine; needs target `python-3.12.pc`). i3More uses static
+  `gtk4-rs` bindings — runtime introspection is never invoked.
+- **hicolor-icon-theme 0.18:** migrated from autoconf to meson —
+  changed `build_pkg` → `build_meson`.
+- **shared-mime-info tarball:** GitLab's archive endpoint returns a
+  16 KB HTML auth page for `.tar.xz` but serves `.tar.gz` correctly.
+  Switched URL + extension.
+- **gtk4 4.16 option renames:** removed `-Dgtk_doc=false` (renamed
+  to `documentation`, already set) and `-Dmedia-ffmpeg=disabled`
+  (option dropped; only gstreamer backend remains).
+
+### Kernel rebuild (Phase 5)
+- **`bc` + `libssl-dev` missing in container.** Kernel 6.12 needs
+  `bc` for `timeconst.h` generation and `openssl/bio.h` (libssl-dev)
+  for `certs/extract-cert`. Added both to `build/Containerfile`.
+- **`step_kernel-build` phantom sentinel.** Same un-chained
+  `make … | tee … ; cp …` pattern as libjpeg-turbo: make failed but
+  the cp silently no-op'd on the missing bzImage, leaving a stub
+  bzImage from initial setup in artifacts/. Chained with `&&` so
+  cp + sentinel only run on successful make.
+
+### Phantom sentinel bug (Phase 8a)
+- `step_libjpeg-turbo` in `08-base-substrate.sh` ran `cmake -S/-B/install`
+  un-chained → configure silently failed (missing
+  `CMAKE_SYSTEM_PROCESSOR=x86_64` → SIMD detection blew up → no
+  Makefile generated) → `touch sentinel` ran anyway → downstream
+  pkg-config couldn't find `libjpeg.pc` (we'd "built" nothing).
+  Chained with `&&`, added the missing var. `gdk-pixbuf`'s
+  `just audit-last` is what surfaced this — a foundation-level
+  bug detected only by an auditor four phases later.
+
+### Tooling that came out of this
+- `build/audit-deps.sh` + `just audit <pkg>` / `just audit-last` —
+  parses meson-log.txt for required-fatal + optional-NO probes.
+  See *Workflow for the next break* below.
+- `.agents/reference/xserver` — shallow clone of
+  freedesktop.org/xorg/xserver for fast grep when probing options.
+
+### Workflow for the next break
+```bash
+just phase-8d        # fails on $PKG
+just audit-last      # shows: Fatal / Required / Optional / Headers / Programs
+# fix per the audit; re-run.
+```
+`— Fatal:` empty + sentinel set ⇒ the build actually succeeded
+(audit ran on a stale log). Use `just progress` to confirm.
 
 ## Target machine
 
