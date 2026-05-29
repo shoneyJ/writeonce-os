@@ -257,6 +257,26 @@ step_xf86-input-libinput() {
 }
 
 # ============================================================================
+# Session launcher: xinit (provides startx)
+# ============================================================================
+
+step_xinit() {
+    # startx + the xinit C launcher. writeonce-session-create execs
+    # /usr/bin/startx after PAM login (writeonce.toml [login]
+    # post-login-exec); startx → xinit launches the X server + runs the
+    # user's ~/.xinitrc (which exec's i3 + i3More).
+    #
+    # --with-xserver=/usr/bin/X sets startx's default server; 17-stage
+    # symlinks /usr/bin/X → Xorg (the suid-wrapper script) so a non-root
+    # login user can start the server. (startx's optional helpers —
+    # xauth/mcookie for cookie auth — are absent; startx degrades to
+    # no-cookie auth on the single-user console, which is fine.)
+    build_pkg xinit "xinit-${XINIT_VERSION}.tar.xz" \
+        --with-xinitdir=/etc/X11/xinit \
+        --with-xserver=/usr/bin/X
+}
+
+# ============================================================================
 # Driver
 # ============================================================================
 
@@ -269,6 +289,7 @@ STEPS=(
     pixman
     xorg-server
     xf86-input-libinput
+    xinit
 )
 
 if [[ $# -eq 0 ]]; then

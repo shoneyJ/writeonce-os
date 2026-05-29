@@ -138,6 +138,7 @@ declare -A URLS=(
     [mesa-${MESA_VERSION}.tar.xz]="https://archive.mesa3d.org/mesa-${MESA_VERSION}.tar.xz"
     [xorg-server-${XORG_SERVER_VERSION}.tar.xz]="https://www.x.org/releases/individual/xserver/xorg-server-${XORG_SERVER_VERSION}.tar.xz"
     [xf86-input-libinput-${XF86_INPUT_LIBINPUT_VERSION}.tar.xz]="https://www.x.org/releases/individual/driver/xf86-input-libinput-${XF86_INPUT_LIBINPUT_VERSION}.tar.xz"
+    [xinit-${XINIT_VERSION}.tar.xz]="https://www.x.org/releases/individual/app/xinit-${XINIT_VERSION}.tar.xz"
 
     # --- Phase 8 / Round 4 — GTK4 stack ---
     [glib-${GLIB_VERSION}.tar.xz]="https://download.gnome.org/sources/glib/$(echo ${GLIB_VERSION}|cut -d. -f1-2)/glib-${GLIB_VERSION}.tar.xz"

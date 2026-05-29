@@ -234,6 +234,14 @@ if [[ -f crates/writeonce-logind/examples/dbus-policy.conf ]]; then
        "$STAGING/etc/dbus-1/system.d/org.freedesktop.login1.conf"
 fi
 
+# startx (from xinit) launches the server named `X`; xorg-server installs
+# the suid-wrapper script as /usr/bin/Xorg, not /usr/bin/X. Symlink the
+# conventional name so `startx` (built --with-xserver=/usr/bin/X) finds it.
+if [[ -e "$STAGING/usr/bin/Xorg" && ! -e "$STAGING/usr/bin/X" ]]; then
+    ln -sf Xorg "$STAGING/usr/bin/X"
+    echo "    symlinked /usr/bin/X → Xorg (startx default server)"
+fi
+
 # Create empty resolv.conf — dhcpcd will populate it at boot.
 : > "$STAGING/etc/resolv.conf"
 

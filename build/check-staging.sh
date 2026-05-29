@@ -84,6 +84,12 @@ REQUIRED_FILES=(
     usr/bin/dbus-daemon
     usr/sbin/dbus-daemon
 
+    # X11 session launcher (startx → X(org) → ~/.xinitrc → i3 + i3More).
+    # writeonce-session-create execs /usr/bin/startx after login.
+    usr/bin/startx
+    usr/bin/X
+    usr/bin/Xorg
+
     # Required shared libs (caught the May-2026 libpam regression)
     usr/lib/libpam.so.0
     usr/lib/libc.so.6
@@ -137,16 +143,27 @@ done
 echo
 echo "== ldd =="
 
-if [ -f "$STAGING/usr/sbin/writeonce-login" ]; then
-    missing=$(LD_LIBRARY_PATH="$STAGING/usr/lib" ldd "$STAGING/usr/sbin/writeonce-login" 2>&1 \
-               | grep 'not found' || true)
+# Dynamic deps of the glibc-linked boot-chain binaries must all resolve
+# inside the staged /usr/lib. Caught the May-2026 libpam regression
+# (writeonce-login) and guards the dbus → logind handshake — a missing
+# transitive lib is a silent boot failure (service exits 127 / 1).
+DBUS_BIN=""
+for c in usr/bin/dbus-daemon usr/sbin/dbus-daemon; do
+    [ -f "$STAGING/$c" ] && { DBUS_BIN="$c"; break; }
+done
+LDD_BINS=(usr/sbin/writeonce-login usr/sbin/writeonce-logind)
+[ -n "$DBUS_BIN" ] && LDD_BINS+=("$DBUS_BIN")
+
+for b in "${LDD_BINS[@]}"; do
+    [ -f "$STAGING/$b" ] || { fail "$(basename "$b"): not staged (cannot ldd)"; continue; }
+    missing=$(LD_LIBRARY_PATH="$STAGING/usr/lib" ldd "$STAGING/$b" 2>&1 | grep 'not found' || true)
     if [ -z "$missing" ]; then
-        pass "writeonce-login: all shared libraries resolved"
+        pass "$(basename "$b"): all shared libraries resolved"
     else
-        fail "writeonce-login: missing shared libraries:"
+        fail "$(basename "$b"): missing shared libraries:"
         printf "%s\n" "$missing" | sed 's/^/        /'
     fi
-fi
+done
 
 # ---------------------------------------------------------------------------
 # /run must be empty in staging — bootstrap creates content at boot
