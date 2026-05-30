@@ -182,8 +182,11 @@ declare -A URLS=(
     [kmod-${KMOD_VERSION}.tar.xz]="https://www.kernel.org/pub/linux/utils/kernel/kmod/kmod-${KMOD_VERSION}.tar.xz"
     [util-linux-${UTIL_LINUX_VERSION}.tar.xz]="https://www.kernel.org/pub/linux/utils/util-linux/v$(echo ${UTIL_LINUX_VERSION}|cut -d. -f1-2)/util-linux-${UTIL_LINUX_VERSION}.tar.xz"
     [procps-ng-${PROCPS_NG_VERSION}.tar.xz]="https://downloads.sourceforge.net/procps-ng/procps-ng-${PROCPS_NG_VERSION}.tar.xz"
-    [shadow-${SHADOW_VERSION}.tar.xz]="https://github.com/shadow-maint/shadow/releases/download/${SHADOW_VERSION}/shadow-${SHADOW_VERSION}.tar.xz"
     [bzip2-${BZIP2_VERSION}.tar.gz]="https://www.sourceware.org/pub/bzip2/bzip2-${BZIP2_VERSION}.tar.gz"
+    # shadow DEFERRED: upstream publishes no checksum and current distro
+    # recipes have moved to 4.17/4.19, so the 4.16.0 github tarball's sha256
+    # couldn't be independently cross-verified. Not boot-critical (login is
+    # PAM/writeonce-login). Re-add the URL + a verified hash when available.
 )
 
 # Packages whose upstreams publish a detached GPG signature alongside the tarball.

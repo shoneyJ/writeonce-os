@@ -38,16 +38,20 @@ source ./blfs-pkg.sh
 # kmod — module loader. modprobe is what writeonce-modules-load.service runs.
 # ============================================================================
 step_kmod() {
-    # Auto-detects xz (built in 03) for .ko.xz; openssl off (no module-sig
-    # verification needed for our use). build_pkg adds --disable-static.
+    # xz (built in 03) for .ko.xz; openssl off (no module-sig verification);
+    # --disable-manpages (scdoc isn't in the container). zstd left to
+    # auto-detect (don't force --with-zstd if liblzma-only). build_pkg adds
+    # --disable-static. `|| return $?` so a configure/make failure propagates
+    # (don't let the symlink loop below mask it).
     build_pkg kmod "kmod-${KMOD_VERSION}.tar.xz" \
         --sysconfdir=/etc \
+        --disable-manpages \
         --with-xz \
         --without-openssl \
-        --with-zstd
+        || return $?
     # kmod ships one binary + tool symlinks (modprobe/insmod/lsmod/depmod/
-    # rmmod/modinfo). Some installs only create them under /usr/bin; mirror
-    # the conventional /usr/sbin names so modprobe resolves on the sbin PATH.
+    # rmmod/modinfo). Mirror the conventional /usr/sbin names so modprobe
+    # resolves on the sbin PATH too.
     for t in modprobe insmod lsmod depmod rmmod modinfo; do
         if [[ -e "$LFS/usr/bin/$t" && ! -e "$LFS/usr/sbin/$t" ]]; then
             ln -sf ../bin/"$t" "$LFS/usr/sbin/$t"
@@ -82,22 +86,23 @@ step_util_linux() {
 # ============================================================================
 step_procps_ng() {
     # --disable-kill: coreutils/util-linux provide kill; avoid the clash.
+    # No --enable-watch8bit: it forces <ncursesw/ncurses.h>, but 03 installs
+    # ncurses headers flat (/usr/include/ncurses.h), so watch builds against
+    # plain <ncurses.h> instead.
     build_pkg procps-ng "procps-ng-${PROCPS_NG_VERSION}.tar.xz" \
         --disable-kill \
-        --without-systemd \
-        --enable-watch8bit
+        --without-systemd
 }
 
-# ============================================================================
-# shadow — login/su/passwd/useradd/groupadd. PAM-aware (libpam from Phase 8a).
-# Not boot-blocking (writeonce-login is the PAM login), but completes the base.
-# ============================================================================
-step_shadow() {
-    # Don't install groups(1)/nologin(8): coreutils/util-linux own them.
-    build_pkg shadow "shadow-${SHADOW_VERSION}.tar.xz" \
-        --without-libbsd \
-        --with-group-name-max-length=32
-}
+# shadow (login/su/passwd/useradd) is DEFERRED this round: its 4.16.0 github
+# tarball sha256 could not be independently cross-verified (no upstream
+# checksum; distros moved to 4.17/4.19). Not boot-critical — writeonce-login
+# is the PAM login. To re-add: restore SHADOW_VERSION + a verified checksum +
+# the 01-fetch URL, re-add `step_shadow` here and `shadow` to STEPS.
+# step_shadow() {
+#     build_pkg shadow "shadow-${SHADOW_VERSION}.tar.xz" \
+#         --without-libbsd --with-group-name-max-length=32
+# }
 
 # ============================================================================
 # bzip2 — Makefile-based (no configure); cross-build by hand. Least critical.
@@ -128,7 +133,7 @@ step_bzip2() {
 # ============================================================================
 # Driver
 # ============================================================================
-STEPS=(kmod util_linux procps_ng shadow bzip2)
+STEPS=(kmod util_linux procps_ng bzip2)   # shadow deferred (see note above)
 
 if [[ $# -eq 0 ]]; then
     for s in "${STEPS[@]}"; do
