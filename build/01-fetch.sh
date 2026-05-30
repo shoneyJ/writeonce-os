@@ -177,6 +177,13 @@ declare -A URLS=(
     [iproute2-${IPROUTE2_VERSION}.tar.xz]="https://mirrors.edge.kernel.org/pub/linux/utils/net/iproute2/iproute2-${IPROUTE2_VERSION}.tar.xz"
     [iputils-${IPUTILS_VERSION}.tar.gz]="https://github.com/iputils/iputils/archive/refs/tags/${IPUTILS_VERSION}.tar.gz"
     [dhcpcd-${DHCPCD_VERSION}.tar.xz]="https://github.com/NetworkConfiguration/dhcpcd/releases/download/v${DHCPCD_VERSION}/dhcpcd-${DHCPCD_VERSION}.tar.xz"
+
+    # --- base userspace (LFS Ch8 runtime essentials — 14-base-userspace.sh) ---
+    [kmod-${KMOD_VERSION}.tar.xz]="https://www.kernel.org/pub/linux/utils/kernel/kmod/kmod-${KMOD_VERSION}.tar.xz"
+    [util-linux-${UTIL_LINUX_VERSION}.tar.xz]="https://www.kernel.org/pub/linux/utils/util-linux/v$(echo ${UTIL_LINUX_VERSION}|cut -d. -f1-2)/util-linux-${UTIL_LINUX_VERSION}.tar.xz"
+    [procps-ng-${PROCPS_NG_VERSION}.tar.xz]="https://downloads.sourceforge.net/procps-ng/procps-ng-${PROCPS_NG_VERSION}.tar.xz"
+    [shadow-${SHADOW_VERSION}.tar.xz]="https://github.com/shadow-maint/shadow/releases/download/${SHADOW_VERSION}/shadow-${SHADOW_VERSION}.tar.xz"
+    [bzip2-${BZIP2_VERSION}.tar.gz]="https://www.sourceware.org/pub/bzip2/bzip2-${BZIP2_VERSION}.tar.gz"
 )
 
 # Packages whose upstreams publish a detached GPG signature alongside the tarball.

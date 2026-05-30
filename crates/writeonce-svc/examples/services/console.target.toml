@@ -32,9 +32,5 @@ after       = [
     "logind.service",
     "writeonce-login.service",
 ]
-
-[service]
-type              = "oneshot"
-exec-start        = "/bin/true"
-remain-after-exit = true
-slice             = "system.slice"
+# Pure synchronization target — no [service]. Reached (Active) once the
+# required chain above is up; no process, nothing to fail.

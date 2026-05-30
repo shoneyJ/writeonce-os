@@ -121,6 +121,34 @@ for f in "${REQUIRED_FILES[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
+# GNU base userspace (LFS Ch8). Their absence is what halted sysinit.target's
+# /bin/true and would break writeonce-bootstrap (mkdir/chown/tr/od) and the
+# desktop .xinitrc (mkdir) — see the 2026-05-30 boot. This check makes the
+# gap a workstation failure instead of a T450 surprise.
+# ---------------------------------------------------------------------------
+
+echo
+echo "== base userspace =="
+
+# coreutils + sed/grep/tar/gzip — install to /usr/bin.
+for b in true false ls cat cp mkdir chmod chown ln tr od sleep env sed grep tar gzip; do
+    if [ -x "$STAGING/usr/bin/$b" ]; then
+        pass "usr/bin/$b"
+    else
+        fail "usr/bin/$b (base userspace missing — rebuild via 03 / 14-base-userspace)"
+    fi
+done
+
+# util-linux / kmod / procps tools land in /usr/bin, /usr/sbin, or /sbin.
+for b in mount modprobe ps; do
+    if [ -x "$STAGING/usr/bin/$b" ] || [ -x "$STAGING/usr/sbin/$b" ] || [ -x "$STAGING/sbin/$b" ]; then
+        pass "$b (base tool present)"
+    else
+        fail "$b missing (util-linux/kmod/procps not staged)"
+    fi
+done
+
+# ---------------------------------------------------------------------------
 # System users in passwd (writeonce-bootstrap needs messagebus = UID 99)
 # ---------------------------------------------------------------------------
 

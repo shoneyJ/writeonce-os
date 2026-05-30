@@ -6,9 +6,6 @@
 
 [unit]
 description = "System initialization complete"
-
-[service]
-type        = "oneshot"
-exec-start  = "/bin/true"
-remain-after-exit = true
-slice       = "system.slice"
+# Pure synchronization target — no [service] section. The supervisor
+# marks a unit with no [service] Active directly (no process spawned),
+# so this can't fail and doesn't depend on /bin/true existing.

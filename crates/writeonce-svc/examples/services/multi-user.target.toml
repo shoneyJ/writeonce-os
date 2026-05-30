@@ -15,9 +15,4 @@
 description = "Multi-user system (console + enabled services)"
 requires    = ["console.target"]
 after       = ["console.target"]
-
-[service]
-type              = "oneshot"
-exec-start        = "/bin/true"
-remain-after-exit = true
-slice             = "system.slice"
+# Pure synchronization target — no [service] (marked Active with no process).

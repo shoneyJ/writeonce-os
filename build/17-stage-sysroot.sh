@@ -87,6 +87,19 @@ for src in "$LFS/lib64" "$LFS/lib"; do
     fi
 done
 
+# Same for stray /bin and /sbin: util-linux, kmod, and shadow install some
+# tools to $LFS/sbin (and /bin depending on --bindir/--sbindir). The UsrMerge
+# symlinks below only resolve if the files actually live under usr/{bin,sbin},
+# so fold them in. `! -L` skips the case where $LFS already UsrMerged these to
+# symlinks (avoids copying a dir onto itself).
+for pair in bin:bin sbin:sbin; do
+    src="$LFS/${pair%%:*}"; dst="$STAGING/usr/${pair##*:}"
+    if [[ -d "$src" && ! -L "$src" ]]; then
+        echo "    merging $src/ → $dst/"
+        cp -a "$src"/. "$dst/" 2>/dev/null || true
+    fi
+done
+
 # Symlinks /bin and /sbin to /usr/bin per modern UsrMerge convention.
 ln -sf usr/bin  "$STAGING/bin"
 ln -sf usr/sbin "$STAGING/sbin"
