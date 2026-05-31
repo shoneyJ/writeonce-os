@@ -10,6 +10,9 @@
 # it so client GL (GTK4 / i3More) loads iris from the installed location.
 # Proper fix is rebuilding Xorg/Mesa with dridriverdir=/usr/lib/dri.
 export LIBGL_DRIVERS_PATH=/usr/lib/dri
+# No accessibility bus (at-spi2) is running; tell GTK not to look for one
+# (silences "Unable to acquire the address of the accessibility bus").
+export GTK_A11Y=none
 
 # ------- Audio -------------------------------------------------------------
 pipewire    >"$HOME/.cache/pipewire.log"    2>&1 &

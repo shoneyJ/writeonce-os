@@ -140,6 +140,7 @@ declare -A URLS=(
     [xf86-input-libinput-${XF86_INPUT_LIBINPUT_VERSION}.tar.xz]="https://www.x.org/releases/individual/driver/xf86-input-libinput-${XF86_INPUT_LIBINPUT_VERSION}.tar.xz"
     [xinit-${XINIT_VERSION}.tar.xz]="https://www.x.org/releases/individual/app/xinit-${XINIT_VERSION}.tar.xz"
     [xkbcomp-${XKBCOMP_VERSION}.tar.xz]="https://www.x.org/releases/individual/app/xkbcomp-${XKBCOMP_VERSION}.tar.xz"
+    [xprop-${XPROP_VERSION}.tar.xz]="https://www.x.org/releases/individual/app/xprop-${XPROP_VERSION}.tar.xz"
     [dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2]="https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_$(echo ${DEJAVU_VERSION}|tr . _)/dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2"
     # i3 runtime library deps
     [startup-notification-${STARTUP_NOTIFICATION_VERSION}.tar.gz]="https://www.freedesktop.org/software/startup-notification/releases/startup-notification-${STARTUP_NOTIFICATION_VERSION}.tar.gz"

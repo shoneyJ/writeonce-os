@@ -286,6 +286,9 @@ step_xkbcomp() {
 
 # ---- i3 runtime library deps (i3 links these; copied in from i3More) -------
 # Without ANY of these i3 fails the dynamic link and exits at startup.
+step_xprop() {                 # i3More sets the bar's DOCK type + strut via xprop
+    build_pkg xprop "xprop-${XPROP_VERSION}.tar.xz"
+}
 step_libev() {                 # → libev.so.4
     build_pkg libev "libev-${LIBEV_VERSION}.tar.gz"
 }
@@ -349,7 +352,7 @@ STEPS=(
     xorg-server
     xf86-input-libinput
     xinit
-    xkbcomp
+    xkbcomp xprop
     libev yajl startup-notification xcb-util-xrm
 )
 
