@@ -139,6 +139,7 @@ declare -A URLS=(
     [xorg-server-${XORG_SERVER_VERSION}.tar.xz]="https://www.x.org/releases/individual/xserver/xorg-server-${XORG_SERVER_VERSION}.tar.xz"
     [xf86-input-libinput-${XF86_INPUT_LIBINPUT_VERSION}.tar.xz]="https://www.x.org/releases/individual/driver/xf86-input-libinput-${XF86_INPUT_LIBINPUT_VERSION}.tar.xz"
     [xinit-${XINIT_VERSION}.tar.xz]="https://www.x.org/releases/individual/app/xinit-${XINIT_VERSION}.tar.xz"
+    [xkbcomp-${XKBCOMP_VERSION}.tar.xz]="https://www.x.org/releases/individual/app/xkbcomp-${XKBCOMP_VERSION}.tar.xz"
 
     # --- Phase 8 / Round 4 — GTK4 stack ---
     [glib-${GLIB_VERSION}.tar.xz]="https://download.gnome.org/sources/glib/$(echo ${GLIB_VERSION}|cut -d. -f1-2)/glib-${GLIB_VERSION}.tar.xz"
@@ -184,6 +185,11 @@ declare -A URLS=(
     [procps-ng-${PROCPS_NG_VERSION}.tar.xz]="https://downloads.sourceforge.net/procps-ng/procps-ng-${PROCPS_NG_VERSION}.tar.xz"
     [bzip2-${BZIP2_VERSION}.tar.gz]="https://www.sourceware.org/pub/bzip2/bzip2-${BZIP2_VERSION}.tar.gz"
     [shadow-${SHADOW_VERSION}.tar.xz]="https://github.com/shadow-maint/shadow/releases/download/${SHADOW_VERSION}/shadow-${SHADOW_VERSION}.tar.xz"
+
+    # --- LFS Ch8 additions (P7) — 14-base-userspace.sh ---
+    [tzdata${TZDATA_VERSION}.tar.gz]="https://www.iana.org/time-zones/repository/releases/tzdata${TZDATA_VERSION}.tar.gz"
+    [kbd-${KBD_VERSION}.tar.xz]="https://www.kernel.org/pub/linux/utils/kbd/kbd-${KBD_VERSION}.tar.xz"
+    [e2fsprogs-${E2FSPROGS_VERSION}.tar.gz]="https://downloads.sourceforge.net/project/e2fsprogs/e2fsprogs/v${E2FSPROGS_VERSION}/e2fsprogs-${E2FSPROGS_VERSION}.tar.gz"
 
     # --- systemd branch (with-systmed) — 16-systemd.sh ---
     [systemd-${SYSTEMD_VERSION}.tar.gz]="https://github.com/systemd/systemd/archive/refs/tags/v${SYSTEMD_VERSION}.tar.gz"

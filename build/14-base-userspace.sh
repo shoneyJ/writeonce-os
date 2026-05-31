@@ -134,9 +134,80 @@ step_bzip2() {
 }
 
 # ============================================================================
+# tzdata (LFS Ch8) — timezone DB compiled with zic. Data only, no configure.
+# The container's zic produces portable TZif files; target into $LFS.
+# ============================================================================
+step_tzdata() {
+    local sentinel="$LOGS/.done-blfs-tzdata"
+    [[ -f "$sentinel" ]] && { echo "skip tzdata (already built)"; return 0; }
+    # zic is in the container but /usr/sbin may not be on the build PATH.
+    local ZIC; ZIC="$(command -v zic || true)"; [[ -x "$ZIC" ]] || ZIC=/usr/sbin/zic
+    [[ -x "$ZIC" ]] || { echo "ERROR: zic not found in container (tzdata)" >&2; return 1; }
+    local work="$BUILD_ROOT/work/tzdata"
+    rm -rf "$work"; mkdir -p "$work"
+    # tzdata tarballs are flat (no top-level dir) → no --strip-components.
+    tar -xf "$SOURCES/tzdata${TZDATA_VERSION}.tar.gz" -C "$work"
+    pushd "$work" >/dev/null
+        local ZI="$LFS/usr/share/zoneinfo"
+        mkdir -pv "$ZI"/{posix,right}
+        for tz in etcetera southamerica northamerica europe africa antarctica \
+                  asia australasia backward; do
+            "$ZIC" -L /dev/null   -d "$ZI"       "${tz}" && \
+            "$ZIC" -L /dev/null   -d "$ZI/posix" "${tz}" && \
+            "$ZIC" -L leapseconds -d "$ZI/right" "${tz}" \
+                || { popd >/dev/null; echo "ERROR: tzdata zic ${tz} failed" >&2; return 1; }
+        done
+        cp -v zone.tab zone1970.tab iso3166.tab "$ZI"
+        "$ZIC" -d "$ZI" -p America/New_York
+    popd >/dev/null
+    touch "$sentinel"
+    echo "<<< tzdata done"
+}
+
+# ============================================================================
+# kbd (LFS Ch8) — setfont/loadkeys/kbd_mode. Needed so systemd-vconsole-setup
+# runs (un-mask it). Manual build: LFS drops the deprecated resizecons first.
+# ============================================================================
+step_kbd() {
+    local sentinel="$LOGS/.done-blfs-kbd"
+    [[ -f "$sentinel" ]] && { echo "skip kbd (already built)"; return 0; }
+    local work="$BUILD_ROOT/work/kbd"
+    rm -rf "$work"; mkdir -p "$work"
+    tar -xf "$SOURCES/kbd-${KBD_VERSION}.tar.xz" -C "$work" --strip-components=1
+    pushd "$work" >/dev/null
+        # LFS: remove the deprecated resizecons program + its manpage.
+        sed -i '/RESIZECONS_PROGS=/s/yes/no/' configure
+        sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
+        local cfg_guess; cfg_guess="$(_find_config_guess)"
+        ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
+            --host="$LFS_TGT" --build="$("$cfg_guess")" \
+            --disable-static --disable-vlock \
+            2>&1 | tee "$LOGS/blfs-kbd-configure.log" && \
+        make -j"$(nproc)"          2>&1 | tee "$LOGS/blfs-kbd-make.log" && \
+        make DESTDIR="$LFS" install 2>&1 | tee "$LOGS/blfs-kbd-install.log" \
+            || { popd >/dev/null; echo "ERROR: kbd failed" >&2; return 1; }
+    popd >/dev/null
+    touch "$sentinel"
+    echo "<<< kbd done"
+}
+
+# ============================================================================
+# e2fsprogs (LFS Ch8) — mkfs.ext4 / fsck.ext4. LFS disables libblkid/libuuid/
+# uuidd/fsck (util-linux provides those). build_pkg configures in-tree.
+# ============================================================================
+step_e2fsprogs() {
+    build_pkg e2fsprogs "e2fsprogs-${E2FSPROGS_VERSION}.tar.gz" \
+        --enable-elf-shlibs \
+        --disable-libblkid \
+        --disable-libuuid \
+        --disable-uuidd \
+        --disable-fsck
+}
+
+# ============================================================================
 # Driver
 # ============================================================================
-STEPS=(kmod util_linux procps_ng shadow bzip2)
+STEPS=(kmod util_linux procps_ng shadow bzip2 tzdata kbd e2fsprogs)
 
 if [[ $# -eq 0 ]]; then
     for s in "${STEPS[@]}"; do

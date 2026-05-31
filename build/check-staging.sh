@@ -92,6 +92,9 @@ REQUIRED_FILES=(
     usr/bin/startx
     usr/bin/X
     usr/bin/Xorg
+    # X server execs xkbcomp at startup to compile the keymap; without it the
+    # server aborts ("Failed to activate virtual core keyboard").
+    usr/bin/xkbcomp
 
     # Required shared libs
     usr/lib/libpam.so.0
@@ -258,6 +261,16 @@ else
     fail "getty@tty1 autologin drop-in missing/empty"
 fi
 
+# getty@tty1 must be ENABLED (the drop-in only customizes it). Without this
+# symlink — which `systemctl preset-all` would create — getty.target is reached
+# but no getty spawns on tty1, so no login prompt ever appears (boot sits idle).
+if [ -L "$STAGING/etc/systemd/system/getty.target.wants/getty@tty1.service" ] \
+   || [ -L "$STAGING/usr/lib/systemd/system/getty.target.wants/getty@tty1.service" ]; then
+    pass "getty@tty1 enabled (getty.target.wants) — login prompt will spawn"
+else
+    fail "getty@tty1 NOT enabled — no login prompt will appear on tty1"
+fi
+
 # /bin/sh in place (shebangs, agetty's login shell fallback, etc.)
 if [ -e "$STAGING/usr/bin/sh" ] || [ -e "$STAGING/bin/sh" ]; then
     pass "/bin/sh present"
@@ -267,10 +280,10 @@ fi
 
 # systemd-firstboot must be masked — otherwise it prompts interactively on the
 # console (timezone/locale/root password) and blocks an unattended boot.
-if [ "$(readlink "$STAGING/etc/systemd/system/systemd-firstboot.service" 2>/dev/null)" = "/dev/null" ]; then
-    pass "systemd-firstboot.service masked (no interactive prompt)"
+if [ ! -e "$STAGING/usr/lib/systemd/system/systemd-firstboot.service" ]; then
+    pass "systemd-firstboot built out (firstboot=false) — no interactive prompt"
 else
-    fail "systemd-firstboot.service NOT masked — boot will hang on the firstboot prompt"
+    fail "systemd-firstboot.service present — boot may prompt (expected firstboot=false)"
 fi
 
 # Empty /etc/machine-id present → systemd generates a unique id at first boot.
@@ -291,16 +304,55 @@ fi
 # pipewire) need the system bus; dbus was built without systemd unit files, so
 # the skeleton ships them. Missing/unenabled → "Failed to start User Login
 # Management" and no session/seat tracking.
-if [ -f "$STAGING/etc/systemd/system/dbus.socket" ] && [ -f "$STAGING/etc/systemd/system/dbus.service" ]; then
-    pass "dbus.socket + dbus.service present"
+if [ -f "$STAGING/usr/lib/systemd/system/dbus.service" ]; then
+    pass "dbus.service present (package, systemd-integrated)"
 else
-    fail "dbus.socket/dbus.service missing — systemd-logind cannot reach the system bus"
+    fail "dbus.service missing — systemd-logind cannot reach the system bus"
 fi
-if [ -L "$STAGING/etc/systemd/system/sockets.target.wants/dbus.socket" ]; then
+if [ -L "$STAGING/usr/lib/systemd/system/sockets.target.wants/dbus.socket" ] \
+   || [ -L "$STAGING/etc/systemd/system/sockets.target.wants/dbus.socket" ]; then
     pass "dbus.socket enabled (sockets.target.wants)"
 else
     fail "dbus.socket not enabled — system bus won't start at boot"
 fi
+# dbus must be built WITH systemd support for the systemd: transport (and to route
+# org.freedesktop.systemd1 to PID 1 instead of the setuid helper). Verify the
+# daemon links libsystemd — the lack of it caused the boot-time failures.
+if LD_LIBRARY_PATH="$STAGING/usr/lib:$STAGING/usr/lib/systemd" ldd "$STAGING/usr/bin/dbus-daemon" 2>/dev/null | grep -q libsystemd; then
+    pass "dbus-daemon linked with libsystemd (systemd: transport + systemd1 routing work)"
+else
+    fail "dbus-daemon NOT linked with libsystemd — --address=systemd: will fail and logind can't reach systemd1"
+fi
+
+# LFS Ch8 additions (P7): tzdata + kbd + e2fsprogs.
+if [ -d "$STAGING/usr/share/zoneinfo" ] && [ -e "$STAGING/usr/share/zoneinfo/UTC" ]; then
+    pass "tzdata zoneinfo present"
+else
+    fail "tzdata zoneinfo missing (/etc/localtime would dangle)"
+fi
+if [ -L "$STAGING/etc/localtime" ]; then
+    pass "/etc/localtime symlink present ($(readlink "$STAGING/etc/localtime"))"
+else
+    fail "/etc/localtime missing"
+fi
+if [ -x "$STAGING/usr/bin/setfont" ] && [ -x "$STAGING/usr/bin/loadkeys" ]; then
+    pass "kbd present (setfont/loadkeys) — vconsole-setup can run"
+else
+    fail "kbd missing — systemd-vconsole-setup will fail"
+fi
+if [ -x "$STAGING/usr/sbin/mkfs.ext4" ] && [ -x "$STAGING/usr/sbin/fsck.ext4" ]; then
+    pass "e2fsprogs present (mkfs.ext4/fsck.ext4)"
+else
+    fail "e2fsprogs missing (mkfs.ext4/fsck.ext4) — installer + boot fsck need it"
+fi
+# No skeleton /dev/null masks should remain (all band-aids removed).
+for m in systemd-firstboot systemd-vconsole-setup; do
+    if [ "$(readlink "$STAGING/etc/systemd/system/$m.service" 2>/dev/null)" = "/dev/null" ]; then
+        fail "$m.service still masked (band-aid) — should be built/working now"
+    else
+        pass "$m.service not masked (band-aid removed)"
+    fi
+done
 
 # ---------------------------------------------------------------------------
 # Verdict

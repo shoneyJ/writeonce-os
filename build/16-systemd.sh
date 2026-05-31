@@ -42,7 +42,7 @@ build_meson systemd "systemd-${SYSTEMD_VERSION}.tar.gz" \
     -Dvconsole=true \
     -Dtmpfiles=true \
     -Dsysusers=true \
-    -Dfirstboot=true \
+    -Dfirstboot=false \
     -Drandomseed=true \
     \
     `# library deps we KEEP (present in $LFS)` \

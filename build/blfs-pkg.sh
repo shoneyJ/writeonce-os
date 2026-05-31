@@ -79,6 +79,8 @@ build_pkg() {
         cfg_guess="$(_find_config_guess)"
         ./configure                                            \
             --prefix=/usr                                      \
+            --sysconfdir=/etc                                  \
+            --localstatedir=/var                               \
             --host="$LFS_TGT"                                  \
             --build="$("$cfg_guess")"                          \
             --disable-static                                   \
@@ -147,6 +149,8 @@ EOF
         meson setup build                                      \
             --cross-file=cross-lfs.ini                         \
             --prefix=/usr                                      \
+            --sysconfdir=/etc                                  \
+            --localstatedir=/var                               \
             --buildtype=release                                \
             --default-library=shared                           \
             "$@"                                               \

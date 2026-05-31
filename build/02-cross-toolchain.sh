@@ -138,13 +138,16 @@ step_glibc() {
     tar -xf "$SOURCES/${src}.tar.xz" -C "$BUILD_ROOT/work/"
 
     pushd "$work" >/dev/null
-        # LFS-style /lib64 symlink on x86_64 (the cross-glibc will install
-        # things in /usr/lib but expects a /lib64 dynamic-linker path).
+        # LFS-style /lib64 symlink on x86_64 (the cross-glibc installs the loader
+        # in /usr/lib but the ELF interpreter path is /lib64/ld-linux-x86-64.so.2).
+        # Use an ABSOLUTE target: a relative '../lib/...' target self-loops once the
+        # usr-merge makes /lib64 → usr/lib (../lib from /usr/lib resolves back to
+        # /usr/lib) → ELOOP at execve → PID 1 panic. Absolute can't loop.
         case "$(uname -m)" in
             x86_64)
                 mkdir -p "$LFS/lib64"
-                ln -sfn ../lib/ld-linux-x86-64.so.2 "$LFS/lib64/ld-linux-x86-64.so.2"
-                ln -sfn ../lib/ld-linux-x86-64.so.2 "$LFS/lib64/ld-lsb-x86-64.so.3" ;;
+                ln -sfn /usr/lib/ld-linux-x86-64.so.2 "$LFS/lib64/ld-linux-x86-64.so.2"
+                ln -sfn /usr/lib/ld-linux-x86-64.so.2 "$LFS/lib64/ld-lsb-x86-64.so.3" ;;
         esac
 
         mkdir -p build && cd build

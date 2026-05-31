@@ -276,6 +276,14 @@ step_xinit() {
         --with-xserver=/usr/bin/X
 }
 
+step_xkbcomp() {
+    # The X server execs /usr/bin/xkbcomp at startup to compile the keymap;
+    # without it the server aborts ("XKB: Couldn't compile keymap" → "Failed to
+    # activate virtual core keyboard"). Deps: libxkbfile (built) + libX11. The
+    # xkb data comes from xkeyboard-config (already staged).
+    build_pkg xkbcomp "xkbcomp-${XKBCOMP_VERSION}.tar.xz"
+}
+
 # ============================================================================
 # Driver
 # ============================================================================
@@ -290,6 +298,7 @@ STEPS=(
     xorg-server
     xf86-input-libinput
     xinit
+    xkbcomp
 )
 
 if [[ $# -eq 0 ]]; then

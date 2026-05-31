@@ -5,6 +5,12 @@
 # then execs i3 as the X session leader. When i3 exits, the X session
 # ends and the user returns to writeonce-login's prompt.
 
+# ------- Graphics: point Mesa at the real DRI driver dir -------------------
+# Xorg/Mesa baked the cross-build path ($LFS/usr/lib/dri) into libglx; override
+# it so client GL (GTK4 / i3More) loads iris from the installed location.
+# Proper fix is rebuilding Xorg/Mesa with dridriverdir=/usr/lib/dri.
+export LIBGL_DRIVERS_PATH=/usr/lib/dri
+
 # ------- Audio -------------------------------------------------------------
 pipewire    >"$HOME/.cache/pipewire.log"    2>&1 &
 wireplumber >"$HOME/.cache/wireplumber.log" 2>&1 &

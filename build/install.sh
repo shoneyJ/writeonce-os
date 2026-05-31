@@ -66,6 +66,15 @@ zstd -d -c "$OUT/sysroot.tar.zst" | tar -x -C "$MNT" --numeric-owner
 # /home/writeonce was forced to uid/gid 0 in the tar; restore to 1000:1000.
 chown -R 1000:1000 "$MNT/home/writeonce" 2>/dev/null || true
 
+# dbus's activation helper must be setuid root, group messagebus (the unprivileged
+# build + uid-0 tar can't set this). Without it, dbus system-bus service activation
+# fails ("permission of the setuid helper is not correct").
+for h in "$MNT/usr/libexec/dbus-daemon-launch-helper" "$MNT/usr/lib/dbus-1.0/dbus-daemon-launch-helper"; do
+    if [[ -f "$h" ]]; then
+        chown root:messagebus "$h" && chmod 4750 "$h" && echo "    set setuid root:messagebus on $(basename "$h")"
+    fi
+done
+
 echo "==== [4/6] Installing EFI-stub kernel → \\EFI\\BOOT\\BOOTX64.EFI ===="
 mkdir -p "$MNT/boot/efi"
 mount "$ESP" "$MNT/boot/efi"

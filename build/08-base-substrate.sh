@@ -307,7 +307,9 @@ step_dbus() {
         -Dmodular_tests=disabled \
         -Dxml_docs=disabled \
         -Dx11_autolaunch=disabled \
-        -Dsystemd=disabled \
+        -Dsystemd=enabled \
+        -Dsystemd_system_unitdir=/usr/lib/systemd/system \
+        -Dsystemd_user_unitdir=/usr/lib/systemd/user \
         -Dapparmor=disabled \
         -Dselinux=disabled \
         -Dlibaudit=disabled \

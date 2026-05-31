@@ -216,9 +216,23 @@ else
 EOF
 fi
 
+# ---- 3c. stage package /etc config -----------------------------------------
+# LFS treats the whole $LFS (including /etc) as the system. Package configs
+# (login.defs, shadow's pam.d, /etc/security for PAM, /etc/fonts for fontconfig,
+# /etc/dbus-1, udev rules, dhcpcd.conf, …) install into $LFS/etc and MUST be
+# staged — otherwise they vanish and login/PAM/fontconfig silently fall back to
+# compiled defaults. The skeleton overlay below runs AFTER this, so our own
+# files (passwd, group, shadow, hostname, pam.d/login, default.target, …) win.
+echo
+echo "==== [3c/8] Staging \$LFS/etc (package config)"
+if [[ -d "$LFS/etc" ]]; then
+    cp -a "$LFS/etc"/. "$STAGING/etc/"
+    echo "    staged $(find "$LFS/etc" -mindepth 1 -maxdepth 1 | wc -l) top-level /etc entries"
+fi
+
 # ---- 4. overlay the skeleton tree ------------------------------------------
 echo
-echo "==== [4/8] Overlaying build/skeleton/"
+echo "==== [4/8] Overlaying build/skeleton/ (wins over package /etc)"
 cp -a build/skeleton/. "$STAGING/"
 
 # /root home directory (root user).
