@@ -23,6 +23,12 @@ work/
 logs/
 gnupg/
 
+# --- firmware/ ---
+# iwlwifi .ucode blobs fetched from kernel.org/linux-firmware by 01-fetch.sh
+# (pinned LINUX_FIRMWARE_COMMIT) and copied here; regenerable binary blobs, same
+# category as sources/. 17-stage-sysroot.sh stages them into the rootfs.
+firmware/
+
 # --- vendor/ ---
 # Local working copy of the i3 fork rsync'd from
 # .agents/reference/i3More/vendor/i3. The Phase 9 build no longer uses
