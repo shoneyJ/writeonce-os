@@ -42,6 +42,27 @@ Phases are **sequential by dependency**, but several can overlap once the prior 
 
 ---
 
+## Phase 11+ — systemd branch (`with-systmed`), post-desktop
+
+The `with-systmed` branch drops the bespoke Rust init/boot layer and ships a stock
+**systemd** substrate (PID 1 + logind + udev + journald) under the same Phase 0–8 LFS
+base and i3More desktop. With the system booting to a usable desktop, these phases add
+the workstation capabilities beyond first boot. **Packaging here is Nix (Phase 14), which
+supersedes the master-branch Phase-10 bespoke-packaging idea for this branch.**
+
+| #  | Phase                                                    | Primary language(s)      | Notes | File |
+| -- | -------------------------------------------------------- | ------------------------ | ----- | ---- |
+| 11 | Live installer: partitions, swap, dynamic fstab          | Bash (shell installer)   | on-target interactive install; ESP + swap + root (+ /home) | [phase-11-storage-installer.md](phase-11-storage-installer.md) |
+| 12 | Automatic network bring-up (wired + wifi + DNS)          | systemd units + iwd/dhcpcd | enable already-built network stack | [phase-12-network.md](phase-12-network.md) |
+| 13 | Preconfigured `~/.config` + `/etc/skel`                  | dotfiles / config        | themed i3More desktop out of the box; **needs X working** | [phase-13-user-config.md](phase-13-user-config.md) |
+| 14 | Package management via Nix (single-user)                 | Nix (consumed, not authored) | apps from pinned nixpkgs; offline-bootstrapped | [phase-14-nix-packages.md](phase-14-nix-packages.md) |
+
+Dependency order: **11 → 12 → (13, 14)**. Phase 13 also depends on the open Xorg/i915
+freeze fix (the current diagnostic image disables auto-`startx`); Phase 14 depends on
+Phase 12 for substituter network access.
+
+---
+
 ## Cross-cutting tracks (parallel to the phases)
 
 - **Track L — Learning log.** `docs/learning/<phase>-<topic>.md` per major concept (PID 1, cgroup v2, EFI handover, kernel Rust, etc.). The user's primary goal is *learning*; this is the evidence.
@@ -57,6 +78,7 @@ Phases are **sequential by dependency**, but several can overlap once the prior 
 - `../.agents/target-machine.md` — hardware ground truth; consult before any `menuconfig` decision.
 - `../.agents/reference/linux/` — kernel source; primary references for boot, init, cgroup, EFI, Rust kernel.
 - `../.agents/reference/i3More/` — DE source; **definitive list of OS-side requirements** (see Phase 8/9 references).
+- `../.agents/reference/blfs-git/` — **BLFS book; the desktop-layer authority** (as LFS is for the base). Recipe source for Xorg apps (`x/installing/x7app.xml` → xkbcomp), fonts (`x7font.xml`, `TTF-and-OTF-fonts.xml` → DejaVu), Mesa/DRI (`/usr/lib/dri`), and fontconfig tuning. i3 itself is *not* in BLFS — it stays external (from i3More).
 - `../.agents/reference/writeonce-all/` — sibling project; consult for conventions/infra patterns when relevant.
 - `../scripts/survey-target-machine.sh` — re-run if T450 hardware changes (RAM upgrade, SSD swap, etc.).
 
@@ -77,6 +99,10 @@ Phases are **sequential by dependency**, but several can overlap once the prior 
 | 8     | `Xorg + i3 + xterm + gtk4-demo` all run; D-Bus + PAM + PipeWire smoke-test pass |
 | 9     | Power-on → login → i3More desktop in < 30 s |
 | 10    | Two clean builds → identical ISO SHA-256; ISO installs on a fresh disk |
+| 11    | Boot USB on T450 → guided install to internal SSD; reboot w/o USB → `swapon --show` active, generated `/etc/fstab` uses UUID/PARTUUID |
+| 12    | After boot: wired DHCP lease + DNS resolve; `iwctl … connect` joins wifi; `systemctl status dhcpcd iwd` active |
+| 13    | New user → themed i3More desktop on first login; `ls -A ~` matches `/etc/skel` |
+| 14    | `nix profile install nixpkgs#ripgrep` → `rg` runs; `/nix` single-user; no `*.nix` in repo |
 
 ---
 

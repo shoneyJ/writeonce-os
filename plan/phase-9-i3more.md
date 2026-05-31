@@ -2,6 +2,23 @@
 
 **Goal.** A user logs in on the T450; i3More runs as the desktop experience.
 
+> **systemd-branch (`with-systmed`) status — BLFS-guided desktop bring-up.**
+> The desktop layer now follows **BLFS** (`.agents/reference/blfs-git`) the way the base
+> follows LFS. The login flow is settled (option **a**: getty autologin → `startx` →
+> `~/.xinitrc` → i3 + i3More); the bespoke `wo-login` is retired on this branch.
+> Bring-up state:
+> - ✅ `xkbcomp` built (BLFS `x7app.xml`) — X server compiles the keymap (was the fatal abort).
+> - ✅ **DejaVu fonts** built (BLFS `TTF-and-OTF-fonts.xml`) → `/usr/share/fonts/dejavu`; i3's
+>   `font pango:monospace` resolves (with no font, i3 exited at startup).
+> - ✅ i3 + all i3More binaries staged via `17-stage-sysroot.sh` from the i3More install-root.
+> - ✅ `.xinitrc` logs i3 to `~/.cache/i3.log`; `LIBGL_DRIVERS_PATH=/usr/lib/dri` set.
+> - ⏳ **DRI/GL path leak** — Mesa/Xorg baked `$LFS/usr/lib/dri` into `libglx`; the `.xinitrc`
+>   override is the stopgap. Proper fix: rebuild mesa with `-Ddri-search-path=/usr/lib/dri`
+>   (the meson cross-file `sys_root=$LFS` leaks it). Needed for GTK4/i3More GL rendering.
+> - ⏳ **X core FontPath** still probes `$LFS/.../fonts/X11` (cosmetic; i3 uses fontconfig).
+> - ⏳ After the desktop is confirmed: flip `default.target → graphical.target` + re-enable
+>   auto-`startx` (currently the diagnostic manual-startx config).
+
 ## Subtasks
 
 1. **Build i3More from `../.agents/reference/i3More/`** using the cross-toolchain + GTK4 + PAM + PipeWire from Phase 8. Match i3More's Cargo.toml feature flags; start with the `lock`, `audio`, `launcher` features. Defer `speech-text` (CUDA dep doesn't exist on this T450).
