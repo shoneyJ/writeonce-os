@@ -205,9 +205,30 @@ step_e2fsprogs() {
 }
 
 # ============================================================================
+# DejaVu fonts (BLFS x/installing/TTF-and-OTF-fonts.xml) — data only, no build.
+# Installs the TTF files so fontconfig resolves monospace/sans/serif; without
+# ANY font i3 (font pango:monospace) exits at startup. fontconfig builds its
+# cache on first boot (/var/cache/fontconfig is writable) — no build-time fc-cache.
+# ============================================================================
+step_dejavu() {
+    local sentinel="$LOGS/.done-blfs-dejavu"
+    [[ -f "$sentinel" ]] && { echo "skip dejavu (already built)"; return 0; }
+    local work="$BUILD_ROOT/work/dejavu"
+    rm -rf "$work"; mkdir -p "$work"
+    tar -xf "$SOURCES/dejavu-fonts-ttf-${DEJAVU_VERSION}.tar.bz2" -C "$work" --strip-components=1
+    pushd "$work" >/dev/null
+        install -v -d -m755 "$LFS/usr/share/fonts/dejavu"
+        install -v -m644 ttf/*.ttf "$LFS/usr/share/fonts/dejavu/" \
+            || { popd >/dev/null; echo "ERROR: dejavu install failed" >&2; return 1; }
+    popd >/dev/null
+    touch "$sentinel"
+    echo "<<< dejavu done ($(ls "$LFS"/usr/share/fonts/dejavu/*.ttf 2>/dev/null | wc -l) ttf files)"
+}
+
+# ============================================================================
 # Driver
 # ============================================================================
-STEPS=(kmod util_linux procps_ng shadow bzip2 tzdata kbd e2fsprogs)
+STEPS=(kmod util_linux procps_ng shadow bzip2 tzdata kbd e2fsprogs dejavu)
 
 if [[ $# -eq 0 ]]; then
     for s in "${STEPS[@]}"; do

@@ -284,6 +284,57 @@ step_xkbcomp() {
     build_pkg xkbcomp "xkbcomp-${XKBCOMP_VERSION}.tar.xz"
 }
 
+# ---- i3 runtime library deps (i3 links these; copied in from i3More) -------
+# Without ANY of these i3 fails the dynamic link and exits at startup.
+step_libev() {                 # → libev.so.4
+    build_pkg libev "libev-${LIBEV_VERSION}.tar.gz"
+}
+step_startup-notification() {  # → libstartup-notification-1.so.0 (needs libX11 + xcb-util)
+    # 0.12's configure runs a realloc(NULL,) test program — impossible when
+    # cross-compiling. The guard is the custom cache var lf_cv_sane_realloc;
+    # pre-seed it so configure skips the run-test.
+    build_pkg startup-notification "startup-notification-${STARTUP_NOTIFICATION_VERSION}.tar.gz" \
+        lf_cv_sane_realloc=yes
+}
+step_xcb-util-xrm() {          # → libxcb-xrm.so.0 (needs libxcb + xcb-util macros)
+    build_pkg xcb-util-xrm "xcb-util-xrm-${XCB_UTIL_XRM_VERSION}.tar.bz2"
+}
+step_yajl() {                  # → libyajl.so.2 (cmake, like zstd)
+    local name=yajl
+    local sentinel="$LOGS/.done-blfs-$name"
+    [[ -f "$sentinel" ]] && { echo "skip $name"; return 0; }
+    echo; echo "==== blfs (cmake): $name ===="
+    rm -rf "$BUILD_ROOT/work/$name"; mkdir -p "$BUILD_ROOT/work/$name"
+    tar -xf "$SOURCES/yajl-${YAJL_VERSION}.tar.gz" -C "$BUILD_ROOT/work/$name" --strip-components=1
+    pushd "$BUILD_ROOT/work/$name" >/dev/null
+        mkdir -p _build && cd _build
+        cat > toolchain.cmake <<EOF
+set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
+set(CMAKE_C_COMPILER $LFS/tools/bin/${LFS_TGT}-gcc)
+set(CMAKE_AR $LFS/tools/bin/${LFS_TGT}-ar)
+set(CMAKE_RANLIB $LFS/tools/bin/${LFS_TGT}-ranlib)
+set(CMAKE_C_FLAGS "--sysroot=$LFS")
+set(CMAKE_FIND_ROOT_PATH $LFS)
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+EOF
+        cmake .. \
+            -DCMAKE_TOOLCHAIN_FILE=toolchain.cmake \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_INSTALL_LIBDIR=lib \
+            -DCMAKE_BUILD_TYPE=Release \
+            2>&1 | tee "$LOGS/blfs-$name-cmake.log" && \
+        make -j"$(nproc)"           2>&1 | tee "$LOGS/blfs-$name-make.log" && \
+        make DESTDIR="$LFS" install 2>&1 | tee "$LOGS/blfs-$name-install.log" \
+            || { popd >/dev/null; echo "ERROR: $name failed" >&2; return 1; }
+    popd >/dev/null
+    find "$LFS/usr/lib" -name '*.la' -delete 2>/dev/null
+    touch "$sentinel"
+    echo "<<< $name done"
+}
+
 # ============================================================================
 # Driver
 # ============================================================================
@@ -299,6 +350,7 @@ STEPS=(
     xf86-input-libinput
     xinit
     xkbcomp
+    libev yajl startup-notification xcb-util-xrm
 )
 
 if [[ $# -eq 0 ]]; then

@@ -271,6 +271,39 @@ else
     fail "getty@tty1 NOT enabled — no login prompt will appear on tty1"
 fi
 
+# Desktop: at least one scalable font must be installed, else i3's
+# `font pango:monospace` resolves to nothing and i3 exits at startup.
+if find "$STAGING/usr/share/fonts" -name '*.ttf' -o -name '*.otf' 2>/dev/null | grep -q .; then
+    nfonts=$(find "$STAGING/usr/share/fonts" \( -name '*.ttf' -o -name '*.otf' \) 2>/dev/null | wc -l)
+    pass "scalable fonts present ($nfonts ttf/otf) — i3/GTK4 can render"
+else
+    fail "no TTF/OTF fonts staged — i3 (pango:monospace) will exit at startup"
+fi
+# i3 + i3More desktop binaries (i3 comes from the i3More install-root via 17-stage).
+for b in i3 i3more; do
+    if [ -x "$STAGING/usr/bin/$b" ]; then
+        pass "usr/bin/$b present"
+    else
+        fail "usr/bin/$b missing — the i3More desktop won't start"
+    fi
+done
+# i3 + i3More dynamic deps must ALL resolve in the staged /usr/lib. Use readelf
+# (DT_NEEDED) not ldd — ldd resolves against the host and gives false negatives.
+# A missing lib (e.g. libstartup-notification) makes i3 exit at startup.
+i3_missing=0
+for b in "$STAGING"/usr/bin/i3 "$STAGING"/usr/bin/i3more*; do
+    [ -e "$b" ] || continue
+    for lib in $(readelf -d "$b" 2>/dev/null | awk -F'[][]' '/NEEDED/{print $2}'); do
+        case "$lib" in libc.so.6|libm.so.6|libdl.so.2|libpthread.so.0|librt.so.1|ld-linux*) continue;; esac
+        [ -e "$STAGING/usr/lib/$lib" ] || { i3_missing=$((i3_missing+1)); printf '        unresolved: %s (%s)\n' "$lib" "$(basename "$b")"; }
+    done
+done
+if [ "$i3_missing" -eq 0 ]; then
+    pass "i3 + i3More dynamic deps all resolve in /usr/lib"
+else
+    fail "$i3_missing unresolved i3/i3More library dep(s) — i3 will fail to load"
+fi
+
 # /bin/sh in place (shebangs, agetty's login shell fallback, etc.)
 if [ -e "$STAGING/usr/bin/sh" ] || [ -e "$STAGING/bin/sh" ]; then
     pass "/bin/sh present"

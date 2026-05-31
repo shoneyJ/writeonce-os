@@ -39,4 +39,6 @@ i3more-audio   >"$HOME/.cache/i3more-audio.log"   2>&1 &
 # i3more-keyhint >"$HOME/.cache/i3more-keyhint.log" 2>&1 &
 
 # ------- Launch i3 (WM owns the rest of the X session) ---------------------
-exec i3
+# Log i3's own output so a startup failure (e.g. font/config) is visible via
+# `just pull-logs` instead of vanishing when the session tears down.
+exec i3 >"$HOME/.cache/i3.log" 2>&1
