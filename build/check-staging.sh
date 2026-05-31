@@ -287,6 +287,21 @@ else
     fail "/var/log/journal missing — boot logs are volatile (lost on reboot)"
 fi
 
+# D-Bus system bus units + enablement. systemd-logind (and i3More applets,
+# pipewire) need the system bus; dbus was built without systemd unit files, so
+# the skeleton ships them. Missing/unenabled → "Failed to start User Login
+# Management" and no session/seat tracking.
+if [ -f "$STAGING/etc/systemd/system/dbus.socket" ] && [ -f "$STAGING/etc/systemd/system/dbus.service" ]; then
+    pass "dbus.socket + dbus.service present"
+else
+    fail "dbus.socket/dbus.service missing — systemd-logind cannot reach the system bus"
+fi
+if [ -L "$STAGING/etc/systemd/system/sockets.target.wants/dbus.socket" ]; then
+    pass "dbus.socket enabled (sockets.target.wants)"
+else
+    fail "dbus.socket not enabled — system bus won't start at boot"
+fi
+
 # ---------------------------------------------------------------------------
 # Verdict
 # ---------------------------------------------------------------------------
