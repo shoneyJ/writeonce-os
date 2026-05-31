@@ -29,6 +29,11 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
         wget                \
         curl                \
         ca-certificates     \
+        bc                  \
+        fakeroot            \
+        grub-efi-amd64-bin  \
+        grub-common         \
+        mtools              \
         gnupg               \
         xz-utils            \
         bzip2               \
@@ -59,6 +64,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
         intltool            \
         docbook-xsl         \
         libelf-dev          \
+        libssl-dev          \
     && rm -rf /var/lib/apt/lists/*
 
 # Path traversal + reads for the rustup install. /root stays 755 (g+x for

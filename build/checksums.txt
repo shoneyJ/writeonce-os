@@ -5,7 +5,6 @@
 # A blank or missing entry causes fetch.sh to record the downloaded file's
 # hash to sources/<basename>.next-lock and refuse to proceed until you copy
 # the hash here (after spot-checking it against the upstream announcement).
-#
 # This file is intentionally not pre-populated: every hash committed here
 # must have been verified by a human at least once. The first developer to
 # run fetch.sh will populate this file from the .next-lock outputs.
@@ -18,10 +17,8 @@
 # gmp-6.3.0.tar.xz
 # mpc-1.3.1.tar.gz
 # isl-0.27.tar.xz
-
 # --- Kernel ---
 # linux-6.12.10.tar.xz
-
 # --- Temporary userspace ---
 # m4-1.4.19.tar.xz
 # ncurses-6.5.tar.gz
@@ -38,7 +35,6 @@
 # sed-4.9.tar.xz
 # tar-1.35.tar.xz
 # xz-5.6.2.tar.xz
-
 # --- Transitional init ---
 # busybox-1.37.0.tar.bz2
 d3ef80d2b67d8cbbe4d3265c63a72c46f9b278ead6e0e06d61801b58f23f50b5  bash-5.2.32.tar.gz
@@ -112,7 +108,7 @@ bc53759a3a83d1ff702fb59641b3d2f7c56e05051fa0cfa93501166fa782dc24  libXrender-0.9
 a107adad2101fecac54ac7f9f0e0a0dd155d954193da55c2340c97f2ff1d814e  mtdev-1.1.7.tar.bz2
 8a9eed75021ee734d7fc0fdf3a65c3bba51dfefe4ae51a9b414a60c70b2d1ed8  pango-1.54.0.tar.xz
 e75568ed18bcbe75e9779af57cb9cc256fd7ebfaadc12bb347a0717055d1d3a9  pipewire-1.2.7.tar.gz
-e6bd137d9108e189365614188fbd85d256f1c11e20773ca361892f5ec8869131  shared-mime-info-2.4.tar.xz
+531291d0387eb94e16e775d7e73788d06d2b2fdd8cd2ac6b6b15287593b6a2de  shared-mime-info-2.4.tar.gz
 0b308f62dce78ac0f4d9de6888234bf170f276b64ac7c96e99779bb4319bcef5  util-macros-1.20.1.tar.xz
 8cd43a582f68368ee5a915e97bf9dadc44d2dfe8c7bb4f96bb7b40ea2ed7848f  wireplumber-0.5.7.tar.gz
 2c1bacd2110f4799f74de6ebb714b94cf6f80fb112316b1219480fd22562148c  xcb-proto-1.17.0.tar.xz
@@ -143,3 +139,33 @@ f6d623dd8230db337a6457645ebca96b9d4788a56385463bb14b8174910dfe23  libinput-1.27.
 8c29e06cf42aacc1eafc4077ae2ec6c6fcb96a626157e0593d5e82a34fd403c1  zstd-1.5.6.tar.gz
 a0624db90180c7ddb79fc7a9151093dc37c646d8c38d3f232f767cf64b85a226  pixman-0.43.4.tar.gz
 a9b63eea997abb9ee6a8b4fbb515831c841f471af845a09de443b28003874bec  libxkbfile-1.1.3.tar.xz
+5c9f64123c194b150fee89049991687386e6ff36ef2af7b80ba53efaf368cc95  font-util-1.4.1.tar.xz
+a929998a8767de7dfa36d6da4751cdbeef34ed630714f2f4a767b351f2442e01  libxcvt-0.1.3.tar.xz
+ac15ffb8430502fbaccdec66c5a82ee0eab0b0f36220df56710feadfeb13d0a0  libmd-1.2.0.tar.xz
+d8a5222828c3adab70adf69a5583f1d32eb5ece04304f7f8392b6a353aa2228c  libXdmcp-1.1.5.tar.xz
+d34f02e113cf7193a1ebf2770d3ac527088d485d4e047ed10e5d217c6ef5de96  pcre2-10.44.tar.bz2
+1b1cde5b235d40479e91be2f0e88a309e3214c8ab470ec8a2744d82a5a9ea05c  fribidi-1.0.16.tar.xz
+273a0a73b1f0bed640afee4a5df0337357ced5b53d3d5d1c405b936501f71017  tiff-4.7.0.tar.xz
+0e5be4d2937e8bd9b7cd60d46721ce79f88a33415dd68c2d738fb5924638f656  readline-8.2.13.tar.gz
+0d621e562fd932ccf67b9660fb018e468a683d7b827541df27813228c996bb11  libcap-2.78.tar.xz
+4a38a1ab3adb1199257edc2a7c4a2bd714665eb605b04368843b06dada2cfcfb  sudo-1.9.17p2.tar.gz
+# --- Kernel firmware (linux-firmware.git commit pinned in versions.env) ---
+91f699308f102a9ed90217d813bfdb355464ece958a4f8ac96bba5e9d77fe870  iwlwifi-7265-17.ucode
+c52bcaa0595f64d5fb32b7db3dd4b832ea7bf78f1037bcafc19d9c0f5c5c617e  iwlwifi-7265D-29.ucode
+86409f21a6a31148d2c1c17bf5f2d904eb5ef455f9dc67c49fbd0c10ab18fd5a  xinit-1.4.3.tar.xz
+dc768b3155172091f56dc69430b5481f2d76ecd9ccb54ead8c2540dbcf5ea9bc  kmod-33.tar.xz
+d78b37a66f5922d70edf3bdfb01a6b33d34ed3c3cafd6628203b2a2b67c8e8b3  util-linux-2.40.2.tar.xz
+22870d6feb2478adb617ce4f09a787addaf2d260c5a8aa7b17d889a962c5e42e  procps-ng-4.0.4.tar.xz
+ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269  bzip2-1.0.8.tar.gz
+7861d544190f938cac1b242624d78c96fe2ebbc7b72f86166e88b50451c6fa58  systemd-256.4.tar.gz
+b78e3921a95d53282a38e90628880624736bf6235e36eea50c50835f59a3530b  shadow-4.16.0.tar.xz
+114543d9f19a6bfeb5bca43686aea173d38755a3db1f2eec112647ae92c6f544  tzdata2026b.tar.gz
+fb3197f17a99eb44d22a3a1a71f755f9622dd963e66acfdea1a45120951b02ed  kbd-2.9.0.tar.xz
+2cec05f39c20ee621f14926195664e66e6017190ac8e4bbdb16d86082e43c5da  e2fsprogs-1.47.4.tar.gz
+0a288114e5f44e31987042c79aecff1ffad53a8154b8ec971c24a69a80f81f77  xkbcomp-1.4.7.tar.xz
+fa9ca4d13871dd122f61258a80d01751d603b4d3ee14095d65453b4e846e17d7  dejavu-fonts-ttf-2.37.tar.bz2
+3c391f7e930c583095045cd2d10eb73a64f085c7fde9d260f2652c7cb3cfbe4a  startup-notification-0.12.tar.gz
+507eb7b8d1015fbec5b935f34ebed15bf346bed04a11ab82b8eee848c4205aea  libev-4.33.tar.gz
+3fb73364a5a30efe615046d07e6db9d09fd2b41c763c5f7d3bfb121cd5c5ac5a  yajl-2.1.0.tar.gz
+301cf33701207ea8782d49f4cb6404abd8f2d64e16f242017fd720be7c900c85  xcb-util-xrm-1.3.tar.bz2
+4436e3148bb91a162406230d9f736a49ca8b50b74790015dc15d78d6ce8e825f  xprop-1.2.7.tar.xz
