@@ -48,49 +48,52 @@ echo
 echo "== files =="
 
 REQUIRED_FILES=(
-    # /etc — essentials read by libc / login / dbus
+    # /etc — essentials read by libc / login / systemd
     etc/passwd
     etc/group
     etc/shadow
     etc/hostname
     etc/hosts
     etc/fstab
+    etc/os-release
 
-    # /etc/writeonce — pid1 + service supervisor configuration
-    etc/writeonce/pid1.toml
-    etc/writeonce/services/console.target.toml
-    etc/writeonce/services/default.target.toml
-    etc/writeonce/services/multi-user.target.toml
-    etc/writeonce/services/sysinit.target.toml
-    etc/writeonce/services/dbus.service.toml
-    etc/writeonce/services/logind.service.toml
-    etc/writeonce/services/writeonce-login.service.toml
-    etc/writeonce/services/writeonce-bootstrap.service.toml
+    # systemd — PID 1 + service manager + logind + udev + journald
+    usr/lib/systemd/systemd
+    usr/bin/systemctl
+    usr/bin/journalctl
+    usr/bin/loginctl
+    usr/lib/systemd/systemd-logind
+    usr/lib/systemd/systemd-udevd
+    usr/lib/systemd/system/graphical.target
+    usr/lib/systemd/system/getty@.service
 
-    # PAM
-    etc/pam.d/writeonce-login
-    etc/pam.d/sudo
+    # systemd userspace config (skeleton overlay)
+    etc/systemd/system/default.target
+    etc/systemd/system/getty@tty1.service.d/autologin.conf
 
-    # WriteOnce binaries — the boot-chain set
-    usr/sbin/writeonce-pid1
-    usr/sbin/writeonce-svc
-    usr/sbin/writeonce-login
-    usr/sbin/writeonce-logind
-    usr/sbin/writeonce-bootstrap
-    usr/bin/wo-ctl
+    # PAM: shadow login auth + pam_systemd (logind session registration)
+    etc/pam.d/login
+    usr/lib/security/pam_unix.so
+    usr/lib/security/pam_systemd.so
 
-    # Userspace tools the bootstrap + services shell out to
+    # Session entry → X → i3 + i3More
+    home/writeonce/.bash_profile
+    home/writeonce/.xinitrc
+
+    # (No bootloader in the rootfs: the EFI-stub kernel is the loader, staged
+    #  to the ESP by 18-make-artifacts / install.sh — validated there, not here.)
+
+    # D-Bus system bus (systemd-logind speaks to it)
     usr/bin/bash
     usr/bin/dbus-daemon
     usr/sbin/dbus-daemon
 
-    # X11 session launcher (startx → X(org) → ~/.xinitrc → i3 + i3More).
-    # writeonce-session-create execs /usr/bin/startx after login.
+    # X11 session launcher (startx → X(org) → ~/.xinitrc → i3 + i3More)
     usr/bin/startx
     usr/bin/X
     usr/bin/Xorg
 
-    # Required shared libs (caught the May-2026 libpam regression)
+    # Required shared libs
     usr/lib/libpam.so.0
     usr/lib/libc.so.6
     usr/lib/libgcc_s.so.1
@@ -139,12 +142,13 @@ for b in true false ls cat cp mkdir chmod chown ln tr od sleep env sed grep tar 
     fi
 done
 
-# util-linux / kmod / procps tools land in /usr/bin, /usr/sbin, or /sbin.
-for b in mount modprobe ps; do
+# util-linux / kmod / procps / shadow tools land in /usr/bin, /usr/sbin, or
+# /sbin. login (shadow) + agetty (util-linux) drive the getty autologin.
+for b in mount modprobe ps agetty login passwd; do
     if [ -x "$STAGING/usr/bin/$b" ] || [ -x "$STAGING/usr/sbin/$b" ] || [ -x "$STAGING/sbin/$b" ]; then
         pass "$b (base tool present)"
     else
-        fail "$b missing (util-linux/kmod/procps not staged)"
+        fail "$b missing (util-linux/kmod/procps/shadow not staged)"
     fi
 done
 
@@ -171,20 +175,23 @@ done
 echo
 echo "== ldd =="
 
-# Dynamic deps of the glibc-linked boot-chain binaries must all resolve
-# inside the staged /usr/lib. Caught the May-2026 libpam regression
-# (writeonce-login) and guards the dbus → logind handshake — a missing
-# transitive lib is a silent boot failure (service exits 127 / 1).
+# Dynamic deps of the core boot binaries must all resolve inside the staged
+# /usr/lib. systemd (PID 1) or login failing to link = an unbootable image.
 DBUS_BIN=""
 for c in usr/bin/dbus-daemon usr/sbin/dbus-daemon; do
     [ -f "$STAGING/$c" ] && { DBUS_BIN="$c"; break; }
 done
-LDD_BINS=(usr/sbin/writeonce-login usr/sbin/writeonce-logind)
+LDD_BINS=(usr/lib/systemd/systemd usr/lib/systemd/systemd-logind)
 [ -n "$DBUS_BIN" ] && LDD_BINS+=("$DBUS_BIN")
+for c in usr/bin/login bin/login usr/sbin/login; do
+    [ -f "$STAGING/$c" ] && { LDD_BINS+=("$c"); break; }
+done
 
 for b in "${LDD_BINS[@]}"; do
     [ -f "$STAGING/$b" ] || { fail "$(basename "$b"): not staged (cannot ldd)"; continue; }
-    missing=$(LD_LIBRARY_PATH="$STAGING/usr/lib" ldd "$STAGING/$b" 2>&1 | grep 'not found' || true)
+    # Include /usr/lib/systemd — systemd's private libs (libsystemd-core/shared)
+    # live there and the binaries RUNPATH to it (resolves on the target).
+    missing=$(LD_LIBRARY_PATH="$STAGING/usr/lib:$STAGING/usr/lib/systemd" ldd "$STAGING/$b" 2>&1 | grep 'not found' || true)
     if [ -z "$missing" ]; then
         pass "$(basename "$b"): all shared libraries resolved"
     else
@@ -192,6 +199,17 @@ for b in "${LDD_BINS[@]}"; do
         printf "%s\n" "$missing" | sed 's/^/        /'
     fi
 done
+
+# The dynamic loader (ELF interpreter) must resolve to a real file. A self-
+# looping symlink here makes every binary fail to execve with ELOOP — the
+# kernel panics on PID 1. The ldd checks above can't catch this (they run on
+# the host loader via LD_LIBRARY_PATH), so assert it explicitly.
+LOADER="$STAGING/usr/lib/ld-linux-x86-64.so.2"
+if realpath -e "$LOADER" >/dev/null 2>&1; then
+    pass "dynamic loader ld-linux-x86-64.so.2 resolves to a real file"
+else
+    fail "dynamic loader ld-linux-x86-64.so.2 does not resolve (ELOOP/dangling) — every binary would fail to exec (PID 1 panic, error -40)"
+fi
 
 # ---------------------------------------------------------------------------
 # /run must be empty in staging — bootstrap creates content at boot
@@ -203,7 +221,7 @@ echo "== /run =="
 if [ -d "$STAGING/run" ]; then
     n=$(find "$STAGING/run" -mindepth 1 2>/dev/null | wc -l)
     if [ "$n" -eq 0 ]; then
-        pass "/run is empty in staging (correct — tmpfs at boot, populated by writeonce-bootstrap)"
+        pass "/run is empty in staging (correct — tmpfs at boot, populated by systemd-tmpfiles)"
     else
         fail "/run is NOT empty in staging — content will be shadowed by tmpfs at boot"
         find "$STAGING/run" -mindepth 1 -maxdepth 2 | sed 's/^/        /'
@@ -219,25 +237,54 @@ fi
 echo
 echo "== skeleton hygiene =="
 
-# enabled.d directory exists (even if empty — bootstrap reads it)
-if [ -d "$STAGING/etc/writeonce/enabled.d" ]; then
-    pass "/etc/writeonce/enabled.d/ directory present"
+# default.target must be a symlink to a real boot target. graphical.target =
+# full desktop; multi-user.target = the diagnostic text-login image (startx run
+# manually). Either is a valid, bootable default.
+if [ -L "$STAGING/etc/systemd/system/default.target" ]; then
+    tgt=$(readlink "$STAGING/etc/systemd/system/default.target")
+    case "$tgt" in
+        *graphical.target)  pass "default.target → $tgt (desktop)" ;;
+        *multi-user.target) pass "default.target → $tgt (diagnostic text login)" ;;
+        *)                  fail "default.target → $tgt (expected graphical.target or multi-user.target)" ;;
+    esac
 else
-    fail "/etc/writeonce/enabled.d/ directory missing — wo-ctl enable will fail"
+    fail "etc/systemd/system/default.target is not a symlink (systemd has no default boot target)"
 fi
 
-# bootstrap script is executable
-if [ -x "$STAGING/usr/sbin/writeonce-bootstrap" ]; then
-    pass "writeonce-bootstrap is executable"
+# getty autologin drop-in present (autologin writeonce on tty1)
+if grep -q -- '--autologin' "$STAGING/etc/systemd/system/getty@tty1.service.d/autologin.conf" 2>/dev/null; then
+    pass "getty@tty1 autologin drop-in present"
 else
-    fail "writeonce-bootstrap is not executable (mode mismatch)"
+    fail "getty@tty1 autologin drop-in missing/empty"
 fi
 
-# /bin/sh symlink in place (writeonce-bootstrap shebang is #!/bin/sh)
+# /bin/sh in place (shebangs, agetty's login shell fallback, etc.)
 if [ -e "$STAGING/usr/bin/sh" ] || [ -e "$STAGING/bin/sh" ]; then
-    pass "/bin/sh present (bootstrap shebang resolvable)"
+    pass "/bin/sh present"
 else
-    fail "/bin/sh missing — writeonce-bootstrap's shebang #!/bin/sh fails"
+    fail "/bin/sh missing"
+fi
+
+# systemd-firstboot must be masked — otherwise it prompts interactively on the
+# console (timezone/locale/root password) and blocks an unattended boot.
+if [ "$(readlink "$STAGING/etc/systemd/system/systemd-firstboot.service" 2>/dev/null)" = "/dev/null" ]; then
+    pass "systemd-firstboot.service masked (no interactive prompt)"
+else
+    fail "systemd-firstboot.service NOT masked — boot will hang on the firstboot prompt"
+fi
+
+# Empty /etc/machine-id present → systemd generates a unique id at first boot.
+if [ -e "$STAGING/etc/machine-id" ]; then
+    pass "/etc/machine-id present (generated at first boot)"
+else
+    fail "/etc/machine-id missing"
+fi
+
+# Persistent journal dir → journalctl -b -1 survives a freeze + reboot.
+if [ -d "$STAGING/var/log/journal" ]; then
+    pass "/var/log/journal present (persistent journald)"
+else
+    fail "/var/log/journal missing — boot logs are volatile (lost on reboot)"
 fi
 
 # ---------------------------------------------------------------------------

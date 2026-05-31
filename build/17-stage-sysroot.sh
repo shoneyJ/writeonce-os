@@ -83,7 +83,13 @@ cp -a "$LFS/usr"/. "$STAGING/usr/"
 for src in "$LFS/lib64" "$LFS/lib"; do
     if [[ -d "$src" ]]; then
         echo "    merging $src/ → $STAGING/usr/lib/"
-        cp -a "$src"/. "$STAGING/usr/lib/" 2>/dev/null || true
+        # -n (--no-clobber): never overwrite a real file already staged from
+        # $LFS/usr (copied above). $LFS/lib64 holds glibc's loader as a relative
+        # symlink (ld-linux-x86-64.so.2 → ../lib/...) that is valid at /lib64 but
+        # self-loops once dropped into /usr/lib — clobbering the real loader ELF
+        # gives every binary ELOOP at execve (PID 1 panic). -n keeps the real
+        # loader and still copies the stray libpam-class libs this merge is for.
+        cp -a -n "$src"/. "$STAGING/usr/lib/" 2>/dev/null || true
     fi
 done
 
@@ -96,7 +102,7 @@ for pair in bin:bin sbin:sbin; do
     src="$LFS/${pair%%:*}"; dst="$STAGING/usr/${pair##*:}"
     if [[ -d "$src" && ! -L "$src" ]]; then
         echo "    merging $src/ → $dst/"
-        cp -a "$src"/. "$dst/" 2>/dev/null || true
+        cp -a -n "$src"/. "$dst/" 2>/dev/null || true
     fi
 done
 
@@ -114,25 +120,22 @@ if [[ -e "$STAGING/usr/bin/bash" && ! -e "$STAGING/usr/bin/sh" ]]; then
 fi
 ln -sf usr/lib  "$STAGING/lib64"
 
-# ---- 3. install Rust boot-path binaries ------------------------------------
+# ---- 3. (with-systmed branch) NO Rust boot-path binaries -------------------
+# This branch uses systemd (built into $LFS/usr by 16-systemd.sh) as PID 1 +
+# service manager + logind + udev, and shadow for login. The custom Rust init
+# crates (writeonce-pid1/svc/logind/login/session-create) are NOT built or
+# staged here — they live on `master`. systemd's /sbin/init symlink + its units
+# are already under $LFS/usr (copied by step 2 above).
 echo
-echo "==== [3a/8] Installing Rust crate binaries"
+echo "==== [3a/8] Rust crate binaries: skipped (systemd branch — none staged)"
 mkdir -p "$STAGING/sbin" "$STAGING/usr/sbin" "$STAGING/usr/bin"
-install_if_present() {
-    local src="$1" dst="$2"
-    if [[ -f "$src" ]]; then
-        install -Dm755 "$src" "$dst"
-        echo "    $src → $dst"
-    else
-        echo "    skip $src (not built)"
-    fi
-}
-install_if_present target/x86_64-unknown-linux-musl/release/writeonce-pid1       "$STAGING/usr/sbin/writeonce-pid1"
-install_if_present target/x86_64-unknown-linux-musl/release/writeonce-svc        "$STAGING/usr/sbin/writeonce-svc"
-install_if_present target/x86_64-unknown-linux-musl/release/wo-ctl               "$STAGING/usr/bin/wo-ctl"
-install_if_present target/release/writeonce-login                                "$STAGING/usr/sbin/writeonce-login"
-install_if_present target/release/writeonce-logind                               "$STAGING/usr/sbin/writeonce-logind"
-install_if_present target/release/writeonce-session-create                       "$STAGING/usr/sbin/writeonce-session-create"
+# Ensure /sbin/init resolves (systemd installs /usr/lib/systemd/systemd; some
+# firmware/GRUB configs default init=/sbin/init). Create the symlink if the
+# systemd build didn't already.
+if [[ -e "$STAGING/usr/lib/systemd/systemd" && ! -e "$STAGING/usr/sbin/init" ]]; then
+    ln -sf ../lib/systemd/systemd "$STAGING/usr/sbin/init"
+    echo "    symlinked /usr/sbin/init → ../lib/systemd/systemd"
+fi
 
 # ---- 3b. install i3 from i3More's meson install-root -----------------------
 echo
@@ -231,21 +234,16 @@ chmod 700 "$STAGING/home/writeonce/.config" 2>/dev/null || true
 cp "$STAGING/etc/shadow.template" "$STAGING/etc/shadow"
 chmod 640 "$STAGING/etc/shadow"
 
-# ---- 5. install service unit TOMLs -----------------------------------------
+# ---- 5. service units: provided by systemd itself --------------------------
+# (with-systmed branch) No writeonce-svc *.service.toml units, and no
+# writeonce-logind D-Bus policy: systemd ships its own units under
+# $LFS/usr/lib/systemd/system and its own org.freedesktop.login1 policy.
 echo
-echo "==== [5/8] Installing service units"
-for unit in crates/writeonce-svc/examples/services/*.toml; do
-    cp -v "$unit" "$STAGING/etc/writeonce/services/" | sed 's/^/    /'
-done
+echo "==== [5/8] Service units: provided by systemd (none copied)"
 
-# ---- 6. install dbus policy + final touch-ups ------------------------------
+# ---- 6. final touch-ups ----------------------------------------------------
 echo
-echo "==== [6/8] D-Bus policy + final touch-ups"
-mkdir -p "$STAGING/etc/dbus-1/system.d"
-if [[ -f crates/writeonce-logind/examples/dbus-policy.conf ]]; then
-    cp crates/writeonce-logind/examples/dbus-policy.conf \
-       "$STAGING/etc/dbus-1/system.d/org.freedesktop.login1.conf"
-fi
+echo "==== [6/8] Final touch-ups"
 
 # startx (from xinit) launches the server named `X`; xorg-server installs
 # the suid-wrapper script as /usr/bin/Xorg, not /usr/bin/X. Symlink the
@@ -270,6 +268,23 @@ tmpfs       /tmp      tmpfs     defaults,nodev,nosuid  0 0
 tmpfs       /run      tmpfs     defaults,nodev,nosuid  0 0
 EOF
 
+
+# ---- 6b. install kernel modules --------------------------------------------
+# 04-kernel.sh stages the built =m drivers (iwlwifi, bt, mmc, rtsx, …) at
+# build/artifacts/modules-stage/lib/modules/<ver>. Copy them into the rootfs
+# (usr-merged: /lib → usr/lib) so modprobe + systemd-modules-load find them.
+# Without this, wifi/bt/cardreader won't load — the built-in =y drivers
+# (AHCI, ext4, i915, e1000e wired ethernet, USB) still boot the desktop.
+echo
+echo "==== [6b/8] Kernel modules"
+MODSTAGE="${MODULES_STAGE:-build/artifacts/modules-stage/lib/modules}"
+if compgen -G "$MODSTAGE/*" >/dev/null 2>&1; then
+    mkdir -p "$STAGING/usr/lib/modules"
+    cp -a "$MODSTAGE"/. "$STAGING/usr/lib/modules/"
+    echo "    staged modules for kernel(s): $(ls "$STAGING/usr/lib/modules" | tr '\n' ' ')"
+else
+    echo "    WARN: $MODSTAGE absent — run 04-kernel.sh first; wifi/bt/mmc modules absent (built-ins still boot)."
+fi
 
 # ---- 7. install kernel firmware blobs --------------------------------------
 # The kernel's iwlwifi driver issues request_firmware() AFTER switch_root, so

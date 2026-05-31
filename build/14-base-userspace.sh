@@ -94,15 +94,18 @@ step_procps_ng() {
         --without-systemd
 }
 
-# shadow (login/su/passwd/useradd) is DEFERRED this round: its 4.16.0 github
-# tarball sha256 could not be independently cross-verified (no upstream
-# checksum; distros moved to 4.17/4.19). Not boot-critical — writeonce-login
-# is the PAM login. To re-add: restore SHADOW_VERSION + a verified checksum +
-# the 01-fetch URL, re-add `step_shadow` here and `shadow` to STEPS.
-# step_shadow() {
-#     build_pkg shadow "shadow-${SHADOW_VERSION}.tar.xz" \
-#         --without-libbsd --with-group-name-max-length=32
-# }
+# ============================================================================
+# shadow — login/su/passwd/useradd. The systemd branch needs /bin/login for
+# the getty autologin + passwd to set the user password. PAM-aware (libpam
+# from Phase 8a). Don't install groups(1) — coreutils owns it.
+# ============================================================================
+step_shadow() {
+    build_pkg shadow "shadow-${SHADOW_VERSION}.tar.xz" \
+        --without-libbsd \
+        --without-selinux \
+        --without-audit \
+        --with-group-name-max-length=32
+}
 
 # ============================================================================
 # bzip2 — Makefile-based (no configure); cross-build by hand. Least critical.
@@ -133,7 +136,7 @@ step_bzip2() {
 # ============================================================================
 # Driver
 # ============================================================================
-STEPS=(kmod util_linux procps_ng bzip2)   # shadow deferred (see note above)
+STEPS=(kmod util_linux procps_ng shadow bzip2)
 
 if [[ $# -eq 0 ]]; then
     for s in "${STEPS[@]}"; do
