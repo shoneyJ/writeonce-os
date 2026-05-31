@@ -9,6 +9,8 @@ video:x:44:writeonce
 plugdev:x:46:writeonce
 input:x:47:writeonce
 messagebus:x:99:
+systemd-journal:x:70:writeonce
+render:x:105:writeonce
 wheel:x:100:writeonce
 nogroup:x:65534:
 writeonce:x:1000:

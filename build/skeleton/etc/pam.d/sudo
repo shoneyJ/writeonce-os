@@ -1,0 +1,12 @@
+# /etc/pam.d/sudo
+#
+# PAM service file consumed by sudo for caller-password verification.
+# Same minimal pam_unix chain as writeonce-login — no Kerberos, no
+# winbind, no fingerprint, no fancy logging. The wheel-group policy
+# itself lives in /etc/sudoers, not here.
+
+auth      required  pam_unix.so
+account   required  pam_unix.so
+session   required  pam_unix.so
+session   required  pam_env.so   envfile=/etc/environment
+password  required  pam_unix.so  sha512 shadow

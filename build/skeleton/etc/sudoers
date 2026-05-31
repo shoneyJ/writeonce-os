@@ -1,0 +1,26 @@
+# /etc/sudoers — WriteOnce default policy.
+#
+# Edit ONLY with `visudo` — syntax errors lock you out of root.
+#
+# This file is parsed by /usr/sbin/sudo (built in Phase 8a). Permissions
+# must be 0440 root:root; the install step in 17-stage-sysroot.sh
+# enforces that.
+
+# Hostname / username aliases — none, single-user system.
+
+# Defaults
+Defaults    env_reset
+Defaults    secure_path="/usr/sbin:/usr/bin:/sbin:/bin"
+Defaults    use_pty                                       # spawn a pty so the called program can't escape
+Defaults    pwfeedback                                    # show * as the password is typed
+Defaults    timestamp_timeout=15                          # re-prompt after 15 min idle
+Defaults    logfile=/var/log/sudo.log
+
+# User privilege specification
+root        ALL=(ALL:ALL) ALL
+
+# Members of the wheel group may execute any command as root, prompted
+# for their OWN password (not root's — root is locked). This is the
+# only path to root in a default WriteOnce install: log in as the
+# `wheel` user the installer created, then `sudo -i` for a root shell.
+%wheel      ALL=(ALL:ALL) ALL

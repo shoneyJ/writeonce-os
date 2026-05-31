@@ -1,0 +1,7 @@
+NAME="WriteOnce OS"
+PRETTY_NAME="WriteOnce OS (systemd)"
+ID=writeonce
+VERSION_ID="0.1"
+BUILD_ID=with-systemd
+ANSI_COLOR="1;36"
+HOME_URL="https://github.com/shoneyj/writeonce-os"

@@ -1,0 +1,21 @@
+#!/bin/sh
+# wo-modules-load — read every /etc/modules-load.d/*.conf and modprobe
+# each non-comment line. Equivalent to systemd-modules-load.service.
+#
+# Invoked once at boot by writeonce-modules-load.service (a oneshot
+# unit pulled in by sysinit.target). Errors on individual modules
+# don't abort the script — the box may have hardware that doesn't
+# match the listed driver, and we'd rather boot than fail.
+
+set -u
+
+for f in /etc/modules-load.d/*.conf; do
+    [ -r "$f" ] || continue
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            ''|\#*) continue ;;
+        esac
+        /sbin/modprobe -- "$line" 2>&1 || \
+            echo "wo-modules-load: modprobe $line failed (continuing)"
+    done < "$f"
+done
