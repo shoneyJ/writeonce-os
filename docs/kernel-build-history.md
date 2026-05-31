@@ -43,3 +43,10 @@ initramfs  :      1796375 bytes  sha256=1788826f2aa87860ae8bc54795ee2aaf46e17233
 git        : 9e84aaa  LSF build packages
 fragment   : sha256=40872217b9e7…
 reason     : reason=add iwd CRYPTO_USER_API + cfg80211/mac80211 builtin; pipewire SND_HRTIMER
+
+## 2026-05-31T07:27:40Z
+bzImage    :     16548352 bytes  sha256=a7594b5fbd2604e8555732682bc860a172f49c65e3183e2d4f851b3d69fe38bd
+initramfs  :      1796418 bytes  sha256=b0f746018a960d2c964a3b4a8bc262e78419d667ae1a7af26c1db97806a14e8f
+git        : d6d5f6f  dbus socket
+fragment   : sha256=c87c5d86f759…
+reason     : i915 PSR/FBC/DC disable (Broadwell hang mitigation)

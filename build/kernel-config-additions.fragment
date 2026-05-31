@@ -33,21 +33,51 @@ CONFIG_DRM=y
 CONFIG_DRM_I915=y
 CONFIG_FB=y
 CONFIG_FRAMEBUFFER_CONSOLE=y
+# Lets the DRM stack (i915 on T450's HD 5500) expose a fbdev so the
+# console keeps working after i915 grabs the GPU. Without this, the
+# kernel uses efifb until i915 deactivates it — symptom is a screen
+# that goes black right after "EFI stub: loaded initrd...".
+CONFIG_DRM_FBDEV_EMULATION=y
+# simpledrm — minimal "just paint via GOP" framebuffer that has no
+# hardware-specific code. Lives alongside i915; if i915 fails to bind
+# or hangs during mode-set, simpledrm keeps the console alive.
+# This is the framebuffer Ubuntu / Fedora ship as a universal fallback.
+CONFIG_DRM_SIMPLEDRM=y
+CONFIG_SYSFB_SIMPLEFB=y
 
 # --- USB (xHCI + EHCI controllers on the T450) ---
 CONFIG_USB=y
 CONFIG_USB_SUPPORT=y
 CONFIG_USB_XHCI_HCD=y
 CONFIG_USB_EHCI_HCD=y
+# USB mass-storage MUST be built-in (=y, not =m). Booting from a USB
+# stick means the rootfs lives on that USB; if the driver is a module
+# it can't be loaded because we can't see the disk to read it from.
+# CONFIG_USB_UAS = USB Attached SCSI, used by every modern USB 3.x stick.
+CONFIG_USB_STORAGE=y
+CONFIG_USB_UAS=y
 CONFIG_HID=y
 CONFIG_HID_GENERIC=y
 CONFIG_USB_HID=y
+
+# --- PS/2 touchpad + TrackPoint (T450 Synaptics clickpad on the i8042 AUX port) ---
+# psmouse MUST be built-in (=y): defconfig ships CONFIG_MOUSE_PS2=m, and with no
+# initramfs the module wasn't autoloaded for the AUX serio port, so Xorg saw only
+# the AT keyboard — no pointer at all. The Synaptics/TrackPoint sub-drivers are
+# already =y (compiled into psmouse); building psmouse in guarantees the touchpad
+# + TrackPoint work at boot.
+CONFIG_MOUSE_PS2=y
 
 # --- Audio: Broadwell-U + Wildcat Point-LP HDA ---
 CONFIG_SND=y
 CONFIG_SND_HDA=y
 CONFIG_SND_HDA_INTEL=y
 CONFIG_SND_HDA_CODEC_REALTEK=y
+# pipewire 1.2 probes /proc/asound/timers at startup via libasound's
+# hrtimer backend; Ubuntu ships this =m, which would trap the same
+# way CRYPTO_USER_API did for iwd. Pin =y so the timer backend is
+# unconditionally present at PID-1 time.
+CONFIG_SND_HRTIMER=y
 
 # --- CPU microcode update path ---
 CONFIG_MICROCODE=y
@@ -61,12 +91,31 @@ CONFIG_CGROUP_BPF=y
 CONFIG_CGROUP_FREEZER=y
 
 # --- Wireless (Intel 7265), Bluetooth, card reader — loaded as modules ---
+# cfg80211 + mac80211 are pinned =y rather than =m so they're present
+# at PID-1 time regardless of modprobe ordering. Otherwise iwd starts
+# before mac80211 loads and finds zero phys. Cost: ~600 KiB image growth.
+CONFIG_CFG80211=y
+CONFIG_MAC80211=y
 CONFIG_IWLWIFI=m
 CONFIG_IWLMVM=m
 CONFIG_BT=m
 CONFIG_BT_HCIBTUSB=m
 CONFIG_MMC=m
 CONFIG_MISC_RTSX=m
+
+# --- Crypto (required by iwd 3.3 + 802.11 PMF/WPA3) ---
+# iwd opens AF_ALG sockets at startup and probes for hash/skcipher
+# algorithms. Ubuntu's base config ships these as =m, but they're not
+# loaded before iwd runs — iwd then warns "WPS will not be available"
+# and bails. Pin =y so the user-API is unconditionally present.
+# See docs/learning/phase-8f-network-stack.md for the canonical list.
+CONFIG_CRYPTO_USER_API=y
+CONFIG_CRYPTO_USER_API_HASH=y
+CONFIG_CRYPTO_USER_API_SKCIPHER=y
+CONFIG_CRYPTO_USER_API_RNG=y
+# CMAC for AES-CMAC / 802.11w PMF; CCM for WPA3 personal.
+CONFIG_CRYPTO_CMAC=y
+CONFIG_CRYPTO_CCM=y
 
 # --- Initramfs compression (zstd for Phase 5 Rust initramfs; gzip transitional) ---
 CONFIG_RD_GZIP=y
@@ -154,3 +203,39 @@ CONFIG_KPROBES=y
 CONFIG_UPROBES=y
 CONFIG_PERF_EVENTS=y
 CONFIG_HW_PERF_EVENTS=y
+
+# ============================================================================
+# with-systmed branch — boot systemd directly off the SATA SSD, NO initramfs.
+# The kernel must mount root itself, so the SATA disk path is built-in (=y),
+# and root= uses PARTUUID (the kernel reads the GPT directly; it can't resolve
+# a filesystem LABEL/UUID without an initramfs). See build/skeleton/boot/grub/grub.cfg.
+# ============================================================================
+
+# SCSI disk layer — libata/AHCI presents the Samsung SSD as /dev/sda through
+# SCSI, so the disk driver MUST be built-in (=y) to mount root with no initramfs.
+CONFIG_SCSI=y
+CONFIG_BLK_DEV_SD=y
+CONFIG_SCSI_MOD=y
+
+# systemd hard requirement: open_by_handle_at() (name_to_handle_at).
+CONFIG_FHANDLE=y
+
+# systemd recommended: autofs for its automount units; tmpfs xattrs + POSIX
+# ACLs for /run + /tmp (logind/tmpfiles set these).
+CONFIG_AUTOFS_FS=y
+CONFIG_TMPFS_XATTR=y
+CONFIG_TMPFS_POSIX_ACL=y
+
+# Built-in kernel command line. GRUB is rejected by the T450's Aptio-V firmware
+# (see 18-make-artifacts.sh history), and we ship no Rust bootloader on this
+# branch, so the kernel's own EFI stub IS the bootloader: the firmware loads
+# bzImage as \EFI\BOOT\BOOTX64.EFI with no load options, so the cmdline must be
+# baked in here. root= uses the fixed PARTUUID install.sh assigns to the root
+# partition (matches build/skeleton/... + build/install.sh). No `quiet` yet —
+# keep first boots verbose. rootwait covers slow USB/SATA enumeration.
+CONFIG_CMDLINE_BOOL=y
+# i915 display-feature disables: Broadwell (Gen8) HD 5500 hard-hangs at console/
+# DRM handoff with PSR/FBC/DC enabled (dead keyboard, no VT switch, CPU soft-lockup).
+# These are the standard Intel-laptop mitigations. If the hang persists, the next
+# step is i915.modeset=0 (confirm-test → simpledrm console, proves i915 is the cause).
+CONFIG_CMDLINE="console=tty0 root=PARTUUID=b0007001-c0de-4f5e-9abc-000000000002 rootwait rw i915.enable_psr=0 i915.enable_fbc=0 i915.enable_dc=0 init=/usr/lib/systemd/systemd"
