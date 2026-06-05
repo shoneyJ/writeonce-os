@@ -42,6 +42,52 @@ the image.
    interaction with the Phase 11 root/`/home` sizing (consider putting `/nix` on root or a
    dedicated dataset).
 
+## Apps not in nixpkgs — pinned flakes (escape hatch)
+
+Not every app lives in nixpkgs. **Zen Browser** is the canonical example:
+as of 2026 it is *not* in nixpkgs and is distributed only through
+community Nix flakes (e.g. `github:youwen5/zen-browser-flake`, which
+wraps Zen's official binary via `wrapFirefox`). The "consume nixpkgs
+as-is" rule (subtask 6) can't cover these, so the policy is:
+
+- **Default path stays nixpkgs.** `nix profile install nixpkgs#<pkg>`
+  for anything in the pinned channel (ripgrep, firefox, librewolf,
+  chromium, …). This is the supply-chain-locked happy path.
+- **Escape hatch — a *pinned* third-party flake** when, and only when,
+  an app is absent from nixpkgs:
+  ```sh
+  nix profile install github:youwen5/zen-browser-flake
+  ```
+  This is still **consumption, not authoring** — no `*.nix` is written
+  in this repo, so the acceptance criterion below holds. But it widens
+  the trust set beyond the single pinned nixpkgs rev (now also: the
+  flake repo, its update bot, and the app's binary CDN). Therefore:
+  - **Pin the flake rev** (record it in a documented list, the same
+    spirit as `checksums.txt` for source tarballs) so reinstalls are
+    reproducible and an upstream change can't silently alter the build.
+  - **Treat each pinned flake as a tracked supply-chain entry** — it
+    gets the same bump-and-verify cadence as the nixpkgs pin (subtask 3)
+    and the Nix tarball (subtask 2).
+- **Non-NixOS note.** WriteOnce is an FHS/LFS host, not NixOS. Nix apps
+  still run because their closure is self-contained and `autoPatchelf`'d
+  against store libs — they do **not** depend on WriteOnce's source-built
+  system GTK/X11. The one runtime caveat is GPU/GL accel: a Nix browser
+  may need the host Mesa (Phase 8) reached via FHS paths, or a `nixGL`
+  wrapper for hardware video decode. Basic rendering works without it.
+
+**Tier boundary (made explicit).** WriteOnce has two package tiers, and
+this plan governs only tier 2:
+- **Tier 1 — substrate** (kernel, glibc, Xorg, systemd, i3/i3More, the
+  Rust crates, *and the fallback terminal*): source-built by
+  `build/0N-*.sh`, never from Nix. This is LFS's "rebuild the system
+  from source" technique, mechanized.
+- **Tier 2 — user apps** (editors, browsers, CLI tools): Nix, per this
+  plan — nixpkgs first, pinned flake as the documented exception.
+
+A useful litmus test: if pressing `mod+Return` must open a terminal on
+a *fresh* install (before any Nix app exists), that terminal is tier 1.
+Anything the user chooses to add afterward is tier 2.
+
 ## Deliverable
 
 A booted system where `nix --version` works and `nix profile install <pkg>` fetches from the
@@ -55,7 +101,11 @@ from a hash-locked tarball, no bespoke packaging code.
   a terminal under i3More.
 - `nix.conf` shows the pinned nixpkgs rev + flakes enabled; reinstalling at the same pin is
   reproducible.
-- No `*.nix` package definitions exist in this repo (consumption only).
+- No `*.nix` package definitions exist in this repo (consumption only) —
+  pinned third-party flakes count as consumption and are permitted.
+- An app absent from nixpkgs installs from a pinned flake and runs under
+  i3More: `nix profile install github:youwen5/zen-browser-flake` →
+  `zen` launches on the X11 desktop.
 
 ## References
 
