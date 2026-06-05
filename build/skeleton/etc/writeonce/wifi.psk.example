@@ -1,0 +1,18 @@
+# Example iwd Wi-Fi profile (NOT loaded — documentation only).
+#
+# build/install.sh prompts for your SSID + passphrase at install time and writes
+# the real profile to /var/lib/iwd/<SSID>.psk (chmod 600). iwd then auto-connects
+# on boot, dhcpcd gets an IP + DNS, and the first-boot `nix profile install` can
+# reach cache.nixos.org to fetch the desktop.
+#
+# The install default/suggestion is the workstation's network, "HOME_SA" — i.e.
+# /var/lib/iwd/HOME_SA.psk would contain:
+#
+#   [Security]
+#   Passphrase=your-wifi-password
+#
+#   [Settings]
+#   AutoConnect=true
+#
+# Ethernet needs NO profile: dhcpcd.service handles the built-in e1000e NIC.
+# To add/replace a network on a running system: `iwctl` (station … connect <ssid>).

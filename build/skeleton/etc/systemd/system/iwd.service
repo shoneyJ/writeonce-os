@@ -1,0 +1,21 @@
+# iwd (iNet wireless daemon). The 13-network-stack build installs the binary
+# (/usr/libexec/iwd) but no unit, so we ship one. iwd does WPA association at
+# L2; dhcpcd.service handles DHCP + DNS at L3. Wi-Fi credentials live in
+# /var/lib/iwd/<SSID>.psk (written at install time by build/install.sh).
+[Unit]
+Description=Wireless service (iwd)
+After=network-pre.target
+Before=network.target
+Wants=network.target
+
+[Service]
+Type=dbus
+BusName=net.connman.iwd
+ExecStart=/usr/libexec/iwd
+NotifyAccess=main
+LimitNPROC=1
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+Alias=dbus-net.connman.iwd.service

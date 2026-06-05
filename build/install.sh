@@ -98,6 +98,38 @@ else
     echo "    WARN: could not hash/set passwords; accounts stay locked (autologin still works)."
 fi
 
+echo "==== [5b/6] Wi-Fi for first-boot internet (optional) ===="
+# The desktop (Hyprland/Quickshell) is fetched from Nix on first boot, which
+# needs internet. Ethernet works with NO config (dhcpcd.service is enabled).
+# For Wi-Fi, provision an iwd profile now; blank SSID = skip (ethernet only).
+WIFI_SSID_HINT="${WIFI_SSID_HINT:-HOME_SA}"   # workstation's current network
+if [[ -t 0 ]]; then
+    read -r -p "Wi-Fi SSID (blank = skip, use ethernet; workstation is on '$WIFI_SSID_HINT'): " WSSID
+    if [[ -n "${WSSID:-}" ]]; then
+        read -r -s -p "Wi-Fi passphrase for '$WSSID': " WPSK; echo
+        if [[ -n "$WPSK" ]]; then
+            install -d -m700 "$MNT/var/lib/iwd"
+            # iwd reads /var/lib/iwd/<SSID>.psk; Passphrase is plaintext (iwd derives the PSK).
+            ( umask 077; cat > "$MNT/var/lib/iwd/${WSSID}.psk" <<EOF
+[Security]
+Passphrase=${WPSK}
+
+[Settings]
+AutoConnect=true
+EOF
+            )
+            chmod 600 "$MNT/var/lib/iwd/${WSSID}.psk"
+            echo "    iwd profile written for '$WSSID' (auto-connect on boot)"
+        else
+            echo "    empty passphrase — skipped Wi-Fi (ethernet only)"
+        fi
+    else
+        echo "    skipped Wi-Fi (ethernet via dhcpcd works with no config)"
+    fi
+else
+    echo "    non-interactive — skipped Wi-Fi (provision /var/lib/iwd/<SSID>.psk manually)"
+fi
+
 echo "==== [6/6] sync + unmount ===="
 sync
 umount "$MNT/boot/efi"
@@ -107,5 +139,7 @@ rmdir "$MNT"
 echo
 echo "✓ Install complete on $DEV."
 echo "  Remove the install medium and boot the target."
-echo "  Expected: firmware → bzImage (EFI stub) → systemd → graphical.target →"
-echo "  getty autologin (writeonce) → startx → i3 + i3More."
+echo "  Expected: firmware → bzImage (EFI stub) → systemd → multi-user.target →"
+echo "  writeonce-nix-init (registers Nix) → getty autologin (writeonce) →"
+echo "  wo-session → nix profile install the desktop (first boot, needs network) →"
+echo "  Hyprland + Quickshell. First boot waits on the download; later boots are instant."

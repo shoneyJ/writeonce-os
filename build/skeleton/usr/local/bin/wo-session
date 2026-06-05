@@ -31,6 +31,14 @@ export WLR_NO_HARDWARE_CURSORS=1
 if ! command -v Hyprland >/dev/null 2>&1; then
     if command -v nix >/dev/null 2>&1 && [ -r /etc/writeonce/desktop-packages ]; then
         echo "wo-session: first boot — installing the desktop from Nix (needs network)…"
+        # Wait for a default route — iwd association + dhcpcd lease take a few
+        # seconds, and multi-user.target does not guarantee network-online.
+        n=0
+        while [ "$n" -lt 60 ] && ! ip route 2>/dev/null | grep -q '^default'; do
+            sleep 2; n=$((n + 1))
+        done
+        ip route 2>/dev/null | grep -q '^default' \
+            || echo "wo-session: no network yet — nix install may fail; check ethernet/Wi-Fi." >&2
         while IFS= read -r pkg; do
             case "$pkg" in ''|\#*) continue ;; esac
             nix profile install "$pkg" \

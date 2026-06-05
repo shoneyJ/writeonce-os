@@ -1,0 +1,18 @@
+# dhcpcd — DHCP client for all interfaces (ethernet + the wlan iwd associates).
+# 13-network-stack builds /usr/sbin/dhcpcd but installs no unit; we ship one.
+# Master mode (no interface arg) manages every interface and writes
+# /etc/resolv.conf, which is how DNS is configured (systemd-resolved is off).
+# -B = foreground (for Type=simple); -q = quiet.
+[Unit]
+Description=DHCP client (all interfaces)
+Wants=network.target
+Before=network.target
+After=iwd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/dhcpcd -B -q
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

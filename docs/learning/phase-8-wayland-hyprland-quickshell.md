@@ -104,13 +104,37 @@ workstation and no target to test on):
 - `etc/profile.d/nix.sh` — puts the Nix profiles on PATH + sets
   `NIX_SSL_CERT_FILE` from the bundled `nss-cacert`. `etc/nix/nix.conf` — flakes,
   cache, single-user.
+- `NIX_VERSION=2.34.7` (latest official, verified 2026-06-05); `checksums.txt`
+  carries the upstream-published sha256, so `01-fetch.sh` verifies on download.
+
+### First-boot networking (required — the desktop is fetched online)
+
+The first-boot `nix profile install` needs internet, but networking was not
+auto-started on this branch. Added:
+- `iwd.service` + `dhcpcd.service` units + `multi-user.target.wants` symlinks
+  (the binaries were built by 13-network-stack but shipped no units). iwd does
+  L2 association; dhcpcd does DHCP + writes `/etc/resolv.conf` (resolved is off).
+- `etc/dbus-1/system.d/iwd-dbus.conf` — iwd's bus policy was missing from the
+  real sysroot, so iwd couldn't own `net.connman.iwd`; shipped here.
+- **Ethernet needs no config** (built-in e1000e + dhcpcd). **Wi-Fi** is
+  provisioned at install: `build/install.sh` prompts for SSID (default hint:
+  the workstation's `HOME_SA`) + passphrase and writes `/var/lib/iwd/<SSID>.psk`
+  (`AutoConnect=true`). `wo-session` waits up to ~2 min for a default route
+  before the Nix install.
+
+### No Nix account / registration
+
+Nix is **not** account-based — there is nothing to sign up for. `nix profile
+install nixpkgs#<pkg>` pulls prebuilt binaries from the public binary cache
+`https://cache.nixos.org` (set as a substituter + trusted key in `nix.conf`); no
+login, token, or registration. The only "registration" in play is internal: the
+store-path DB load (`nix-store --load-db`, done by `writeonce-nix-init`) and the
+optional nixpkgs **flake-registry pin** (a config pin for reproducibility, not
+an account). Just network access to the cache is required.
 
 ### What remains (cannot be done in this environment)
 
-1. **Verify the Nix tarball checksum** at fetch (`01-fetch.sh` writes
-   `sources/nix-*.next-lock`; confirm against releases.nixos.org, merge into
-   `checksums.txt`). Confirm `NIX_VERSION` exists.
-2. **Realize the desktop closure** — first graphical boot with network
+1. **Realize the desktop closure** — first graphical boot with network
    (`wo-session` runs `nix profile install` from `desktop-packages`), or, once
    Nix is on the workstation, pre-bake the closure into `/nix/store` at
    image-build (most robust; no first-boot network for the compositor). Pin the
