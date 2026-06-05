@@ -1,0 +1,14 @@
+# /etc/writeonce/desktop-packages — Tier-2 (Nix) desktop closure for WriteOnce.
+#
+# One Nix flake reference per line; consumed by /usr/local/bin/wo-session via
+# `nix profile install`. This is *consumption only* — no *.nix package
+# definitions are authored in this repo (per the project scope + Phase 14).
+# The nixpkgs revision is pinned in the Nix bootstrap (registry); bump-and-
+# verify per plan/phase-14-nix-packages.md.
+#
+# Minimal-first desktop: compositor + shell + terminal + portal + clipboard.
+nixpkgs#hyprland
+nixpkgs#quickshell
+nixpkgs#kitty
+nixpkgs#xdg-desktop-portal-hyprland
+nixpkgs#wl-clipboard

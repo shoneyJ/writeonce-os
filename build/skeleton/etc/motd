@@ -8,11 +8,11 @@
   Rust + kernel boot path. No reinvention beyond that.
 
   Type your username + password at the prompt.
-  After login, the X session starts automatically.
+  After login, the Hyprland desktop starts automatically.
 
-  Useful keybindings (i3):
-    Mod+Return         alacritty (terminal)
-    Mod+d              dmenu     (app launcher)
-    Mod+Shift+e        log out
-    Mod+l              i3lock    (lock screen)
+  Useful keybindings (Hyprland):
+    Mod+Return         kitty (terminal)
+    Mod+Q              close window
+    Mod+Shift+E        log out
+    Mod+F              fullscreen
 

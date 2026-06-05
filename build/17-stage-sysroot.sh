@@ -6,26 +6,24 @@
 #   - target/.../release/writeonce-{pid1,svc,login,logind,initramfs} +
 #     wo-ctl (the per-Rust-crate boot-path binaries)
 #   - target/x86_64-unknown-uefi/release/writeonce-bootloader.efi
-#   - i3 from i3More's meson install-root (built via i3More's own tooling)
-#   - i3More from /opt/i3more/bin (built via i3More's own dev container)
-#   - build/skeleton/ overlay (/etc/*, /home/writeonce/* defaults)
+#   - the Hyprland + Quickshell desktop is delivered via Nix at runtime
+#     (see /etc/writeonce/desktop-packages); its config rides in via the
+#     build/skeleton overlay below — nothing is staged from a DE build here.
+#   - build/skeleton/ overlay (/etc/*, /home/writeonce/* defaults:
+#     .config/hypr, .config/quickshell, /usr/local/bin/wo-session, /etc/nix)
 #   - crates/writeonce-svc/examples/services/*.toml → /etc/writeonce/services/
 #
 # Output: $STAGING (default: build/staging/sysroot/) — a complete root
 # filesystem ready to be tar+zstd'd into the installer artifact.
 #
-# RUNS ON THE HOST DIRECTLY (not inside wo-builder). It needs to read
-# the operator's /opt/i3more/bin/ and the i3More symlink target, both
-# of which are outside the wo-builder Docker container's /work mount.
+# RUNS ON THE HOST DIRECTLY (not inside wo-builder) so it can read build
+# artifacts + the skeleton overlay outside the container's /work mount.
 #
 # Prerequisite ARTIFACTS:
 #   - Phase 0-8 built ($LFS/usr populated)
-#   - Rust crates built (cargo build-pid1, build-svc, build-login,
-#     build-logind, build-initramfs + UEFI bootloader)
-#   - i3 built via i3More's `just i3-build && just i3-stage` (install-root
-#     populated at .agents/reference/i3More/vendor/i3/build/install-root/)
-#   - i3More built via `docker compose run dev cargo build --release ...`
-#     and copied to /opt/i3more/bin/ (or override I3MORE_BIN_DIR)
+#   - Kernel modules + firmware staged (04-kernel.sh, 01-fetch.sh)
+#   - Desktop (Hyprland + Quickshell): delivered via Nix at runtime, not staged
+#     here (see /etc/writeonce/desktop-packages + plan/phase-14-nix-packages.md)
 
 set -euo pipefail
 
@@ -137,84 +135,17 @@ if [[ -e "$STAGING/usr/lib/systemd/systemd" && ! -e "$STAGING/usr/sbin/init" ]];
     echo "    symlinked /usr/sbin/init → ../lib/systemd/systemd"
 fi
 
-# ---- 3b. install i3 from i3More's meson install-root -----------------------
+# ---- 3b. desktop environment: delivered via Nix, not staged here -----------
 echo
-echo "==== [3b/8] Installing i3 (from i3More's meson install-root)"
-# i3 is the user's fork at github.com:shoneyJ/i3, built via i3More's
-# Dockerfile.i3 + justfile pipeline (just i3-build && just i3-stage).
-# The staged install lives at vendor/i3/build/install-root/usr/local/.
-# We copy it into our sysroot under /usr/ (NOT /usr/local) so it's on
-# the default PATH for everyone.
-#
-# Override I3_INSTALL_ROOT to point at a different install-root.
-I3_INSTALL_ROOT="${I3_INSTALL_ROOT:-.agents/reference/i3More/vendor/i3/build/install-root}"
-I3_SRC_USR="$I3_INSTALL_ROOT/usr/local"
-if [[ -d "$I3_SRC_USR/bin" ]]; then
-    # Copy /usr/local/{bin,etc,share,lib} into staging /usr/{bin,etc,share,lib}.
-    for sub in bin etc share lib; do
-        if [[ -d "$I3_SRC_USR/$sub" ]]; then
-            cp -av "$I3_SRC_USR/$sub/." "$STAGING/usr/$sub/" 2>/dev/null \
-                | tail -3 | sed 's/^/    /'
-        fi
-    done
-    echo "    i3 installed from $I3_SRC_USR"
-else
-    cat <<EOF
-    WARN: $I3_SRC_USR/bin does not exist — i3 not installed.
-
-    Build it on the host via i3More's tooling:
-        cd .agents/reference/i3More
-        just i3-image
-        just i3-build
-        just i3-stage         # populates vendor/i3/build/install-root
-
-    Or set I3_INSTALL_ROOT=<other-path> and re-run this script.
-
-    Without i3, the resulting sysroot boots to writeonce-login but
-    .xinitrc fails on 'exec i3' — user lands back at a re-prompted
-    login.
-EOF
-fi
-
-# ---- 3c. install pre-built i3More binaries from /opt/i3more/bin ------------
-echo
-echo "==== [3c/8] Installing i3More binaries"
-# i3More is built out-of-tree on the workstation (docker compose run
-# dev cargo build --release …). The operator's existing build installs
-# to /opt/i3more/bin/ which we copy verbatim into the WriteOnce sysroot.
-#
-# ABI assumption: the workstation's glibc + GTK4 + libpipewire + libpam
-# versions are forward-compatible with the WriteOnce sysroot versions
-# (glibc 2.40, GTK4 4.16.7, pipewire 1.2.7). In practice this works
-# because newer glibc + GTK4 are backward-compatible.
-#
-# Override I3MORE_BIN_DIR to point elsewhere (e.g. a CI cache or the
-# i3More repo's dist/ directory).
-I3MORE_BIN_DIR="${I3MORE_BIN_DIR:-/opt/i3more/bin}"
-if [[ -d "$I3MORE_BIN_DIR" ]]; then
-    copied=0
-    for bin in "$I3MORE_BIN_DIR"/i3more*; do
-        [[ -f "$bin" && -x "$bin" ]] || continue
-        name="$(basename "$bin")"
-        install -Dm755 "$bin" "$STAGING/usr/bin/$name"
-        echo "    $bin → /usr/bin/$name"
-        copied=$((copied + 1))
-    done
-    if [[ $copied -eq 0 ]]; then
-        echo "    WARN: $I3MORE_BIN_DIR is empty — no i3More binaries installed"
-    else
-        echo "    installed $copied i3More binaries"
-    fi
-else
-    cat <<EOF
-    WARN: $I3MORE_BIN_DIR does not exist — skipping i3More install.
-          The booted system will boot to i3 but lack the i3More UX
-          layer (no launcher, lock, audio applet, etc.).
-          To install: build i3More on the host (see i3More's README),
-          ensure binaries land at /opt/i3more/bin/, then re-run.
-          Or set I3MORE_BIN_DIR=<other-path> and re-run this script.
-EOF
-fi
+echo "==== [3b/8] Desktop (Hyprland + Quickshell): via Nix at runtime"
+# The X11/i3 + i3More desktop was replaced by a Wayland desktop (Hyprland
+# compositor + Quickshell shell). Per the project scope these Tier-2 packages
+# come from Nix — see /etc/writeonce/desktop-packages + the wo-session launcher,
+# both staged by the build/skeleton overlay in step [4/8]. A Nix Hyprland
+# closure is self-contained (its own Mesa/Wayland/seatd), so there is nothing
+# to copy from a DE build at this stage. (Prerequisite: the Phase 14 Nix
+# bootstrap — plan/phase-14-nix-packages.md.)
+echo "    desktop config staged via build/skeleton; binaries via Nix profile"
 
 # ---- 3c. stage package /etc config -----------------------------------------
 # LFS treats the whole $LFS (including /etc) as the system. Package configs
@@ -323,4 +254,5 @@ echo
 echo "Staging complete. Size:"
 du -sh "$STAGING"
 echo
-echo "Next: ./build/18-make-artifacts.sh — bundles for the installer."
+echo "Next: ./build/17a-install-nix.sh — stage the single-user Nix store (Phase 14),"
+echo "      then ./build/18-make-artifacts.sh — bundles for the installer."

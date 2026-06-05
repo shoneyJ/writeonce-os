@@ -11,6 +11,10 @@
 #   build_meson <name> <archive> [extra meson options…]
 #       Meson-style:     meson setup build → meson compile → meson install
 #
+#   build_cmake <name> <archive> [extra -D flags…]
+#       CMake-style:     cmake -G Ninja → cmake --build → cmake --install
+#       (Wayland desktop stack: hypr* libs, aquamarine, Qt6, Quickshell.)
+#
 # Both:
 #   - Skip if logs/.done-blfs-<name> exists (delete sentinel to redo).
 #   - Extract into work/<name>/ (wiped first).
@@ -157,6 +161,77 @@ EOF
             2>&1 | tee "$LOGS/blfs-$name-setup.log"          && \
         meson compile -C build         2>&1 | tee "$LOGS/blfs-$name-compile.log" && \
         DESTDIR="$LFS" meson install -C build \
+                                         2>&1 | tee "$LOGS/blfs-$name-install.log" \
+            || { popd >/dev/null; echo "ERROR: $name failed" >&2; return 1; }
+    popd >/dev/null
+    find "$LFS/usr/lib" -name '*.la' -delete 2>/dev/null
+    touch "$sentinel"
+    echo "<<< $name done"
+}
+
+# ---- build_cmake: cmake + ninja --------------------------------------------
+#
+# For the Wayland desktop stack (hypr* libs, aquamarine, Qt6 modules,
+# Quickshell): these are CMake projects, so build_pkg/build_meson don't fit.
+# The toolchain file below is the CMake analogue of build_meson's cross-file.
+#
+# The crucial line is CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER: it is the CMake
+# equivalent of meson's needs_exe_wrapper=true. Build-time code generators
+# (wayland-scanner, hyprwayland-scanner, Qt's moc/qsb) must be the HOST
+# binaries — the cross-built ones link $LFS glibc/libstdc++ and can't exec on
+# the build host (see build_meson's comment). PROGRAM=NEVER routes every
+# find_program()/find_package(... PROGRAM) to the host /usr, while LIBRARY/
+# INCLUDE/PACKAGE=ONLY keep libraries + Config.cmake discovery inside $LFS.
+
+build_cmake() {
+    local name="$1" archive="$2"; shift 2
+    local sentinel="$LOGS/.done-blfs-$name"
+    if [[ -f "$sentinel" ]]; then
+        echo "skip $name (already built)"
+        return 0
+    fi
+    command -v cmake >/dev/null || { echo "blfs: cmake not in PATH (add to wo-builder)"; return 1; }
+    command -v ninja >/dev/null || { echo "blfs: ninja not in PATH";                     return 1; }
+    echo
+    echo "============================================================"
+    echo " blfs (cmake): $name"
+    echo "============================================================"
+    _extract "$name" "$archive"
+
+    # Write a CMake toolchain file describing the LFS target.
+    local tc="$BUILD_ROOT/work/$name/toolchain-lfs.cmake"
+    cat > "$tc" <<EOF
+set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_SYSTEM_PROCESSOR x86_64)
+set(CMAKE_C_COMPILER   $LFS/tools/bin/${LFS_TGT}-gcc)
+set(CMAKE_CXX_COMPILER $LFS/tools/bin/${LFS_TGT}-g++)
+set(CMAKE_AR           $LFS/tools/bin/${LFS_TGT}-ar)
+set(CMAKE_RANLIB       $LFS/tools/bin/${LFS_TGT}-ranlib)
+set(CMAKE_STRIP        $LFS/tools/bin/${LFS_TGT}-strip)
+set(CMAKE_SYSROOT      $LFS)
+set(CMAKE_FIND_ROOT_PATH "$LFS;$LFS/usr")
+# Generators (codegen tools) must come from the HOST, never the sysroot —
+# the CMake analogue of build_meson's needs_exe_wrapper=true.
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+set(ENV{PKG_CONFIG_SYSROOT_DIR} "$LFS")
+set(ENV{PKG_CONFIG_LIBDIR} "$LFS/usr/lib/pkgconfig:$LFS/usr/share/pkgconfig")
+EOF
+
+    pushd "$BUILD_ROOT/work/$name" >/dev/null
+        cmake -S . -B build -G Ninja                           \
+            -DCMAKE_TOOLCHAIN_FILE="$tc"                       \
+            -DCMAKE_INSTALL_PREFIX=/usr                        \
+            -DCMAKE_INSTALL_LIBDIR=lib                         \
+            -DCMAKE_BUILD_TYPE=Release                         \
+            -DBUILD_SHARED_LIBS=ON                             \
+            "$@"                                               \
+            2>&1 | tee "$LOGS/blfs-$name-setup.log"          && \
+        cmake --build build -j"$(nproc)" \
+                                         2>&1 | tee "$LOGS/blfs-$name-compile.log" && \
+        DESTDIR="$LFS" cmake --install build \
                                          2>&1 | tee "$LOGS/blfs-$name-install.log" \
             || { popd >/dev/null; echo "ERROR: $name failed" >&2; return 1; }
     popd >/dev/null

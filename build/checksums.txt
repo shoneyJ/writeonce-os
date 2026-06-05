@@ -158,6 +158,9 @@ d78b37a66f5922d70edf3bdfb01a6b33d34ed3c3cafd6628203b2a2b67c8e8b3  util-linux-2.4
 22870d6feb2478adb617ce4f09a787addaf2d260c5a8aa7b17d889a962c5e42e  procps-ng-4.0.4.tar.xz
 ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269  bzip2-1.0.8.tar.gz
 7861d544190f938cac1b242624d78c96fe2ebbc7b72f86166e88b50451c6fa58  systemd-256.4.tar.gz
+# Phase 14 Nix bootstrap — placeholder; 01-fetch.sh writes the real hash to
+# sources/nix-*.next-lock, verify against releases.nixos.org, then merge here.
+# nix-2.24.10-x86_64-linux.tar.xz
 b78e3921a95d53282a38e90628880624736bf6235e36eea50c50835f59a3530b  shadow-4.16.0.tar.xz
 114543d9f19a6bfeb5bca43686aea173d38755a3db1f2eec112647ae92c6f544  tzdata2026b.tar.gz
 fb3197f17a99eb44d22a3a1a71f755f9622dd963e66acfdea1a45120951b02ed  kbd-2.9.0.tar.xz

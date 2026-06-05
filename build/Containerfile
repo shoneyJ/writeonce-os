@@ -66,7 +66,21 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
         docbook-xsl         \
         libelf-dev          \
         libssl-dev          \
+        libwayland-bin      \
+        libwayland-dev      \
+        wayland-protocols   \
+        libpugixml-dev      \
     && rm -rf /var/lib/apt/lists/*
+
+# Host build-time code generators for the Wayland desktop stack (16a-16d).
+# The "cross" here is sysroot/glibc-targeting (build host and target are both
+# x86_64-linux-gnu), so generators must be HOST binaries — the cross-built
+# ones link $LFS glibc and can't exec on the build host:
+#   libwayland-bin  -> /usr/bin/wayland-scanner  (libxkbcommon, mesa, qtwayland)
+#   libwayland-dev  -> wayland .pc/headers for host-side codegen checks
+#   wayland-protocols -> host protocol XML
+#   libpugixml-dev  -> dependency of the host-native hyprwayland-scanner build
+# Resolved via meson `native: true` / CMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER.
 
 # Path traversal + reads for the rustup install. /root stays 755 (g+x for
 # traversal only); the toolchain itself becomes world-readable. Then add

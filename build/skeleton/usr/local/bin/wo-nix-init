@@ -1,0 +1,55 @@
+#!/bin/sh
+# /usr/local/bin/wo-nix-init — first-boot single-user Nix registration.
+#
+# Invoked once by writeonce-nix-init.service, guarded so it only runs while the
+# store DB is absent. Follows the official single-user closure-install steps:
+# chown /nix to the primary user, load the store DB from the bundled .reginfo,
+# then install the bundled nix into the default profile (so nix/nix-env/
+# nix-store land on PATH via /etc/profile.d/nix.sh). After this, the desktop
+# closure is realized by wo-session (`nix profile install` from
+# /etc/writeonce/desktop-packages). See plan/phase-14-nix-packages.md.
+#
+# UNVERIFIED in this environment (no Nix/target available) — review on first
+# real boot; it is idempotent (re-runs are no-ops once the DB exists).
+set -eu
+
+NIX_USER=writeonce
+DB=/nix/var/nix/db/db.sqlite
+
+[ -e "$DB" ] && { echo "wo-nix-init: store DB already present — nothing to do"; exit 0; }
+
+# Locate the bundled nix package (/nix/store/<hash>-nix-<ver>).
+NIX_PKG=""
+for d in /nix/store/*-nix-[0-9]*; do
+    [ -x "$d/bin/nix-store" ] && { NIX_PKG="$d"; break; }
+done
+[ -n "$NIX_PKG" ] || { echo "wo-nix-init: bundled nix package not found in /nix/store" >&2; exit 1; }
+
+# Single-user store: owned by the primary user (before any nix op writes /nix/var).
+if id "$NIX_USER" >/dev/null 2>&1; then
+    chown -R "$NIX_USER:$NIX_USER" /nix 2>/dev/null || true
+fi
+
+# Run a nix command as the store owner if `runuser` is available, else as root.
+run_owner() {
+    if command -v runuser >/dev/null 2>&1 && id "$NIX_USER" >/dev/null 2>&1; then
+        runuser -u "$NIX_USER" -- "$@"
+    else
+        "$@"
+    fi
+}
+
+# Register the staged store paths in the DB.
+if [ -r /nix/.reginfo ]; then
+    run_owner "$NIX_PKG/bin/nix-store" --load-db < /nix/.reginfo \
+        || { echo "wo-nix-init: nix-store --load-db failed" >&2; exit 1; }
+fi
+
+# Default profile → the bundled nix.
+run_owner "$NIX_PKG/bin/nix-env" -p /nix/var/nix/profiles/default -i "$NIX_PKG" \
+    || { echo "wo-nix-init: installing nix into the default profile failed" >&2; exit 1; }
+
+# Re-assert ownership in case a fallback root op wrote /nix/var.
+id "$NIX_USER" >/dev/null 2>&1 && chown -R "$NIX_USER:$NIX_USER" /nix/var 2>/dev/null || true
+
+echo "wo-nix-init: single-user Nix registered (nix=$NIX_PKG)"

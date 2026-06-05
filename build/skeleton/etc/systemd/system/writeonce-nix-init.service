@@ -1,0 +1,18 @@
+# First-boot single-user Nix registration. Runs once (guarded by the absence
+# of the store DB) before the tty1 autologin session, so `nix` is usable by the
+# time wo-session tries to realize the desktop closure. See wo-nix-init +
+# plan/phase-14-nix-packages.md.
+[Unit]
+Description=WriteOnce single-user Nix first-boot registration
+ConditionPathExists=/nix/.reginfo
+ConditionPathExists=!/nix/var/nix/db/db.sqlite
+After=local-fs.target
+Before=getty@tty1.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/wo-nix-init
+
+[Install]
+WantedBy=multi-user.target

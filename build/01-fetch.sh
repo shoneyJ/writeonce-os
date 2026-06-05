@@ -211,6 +211,11 @@ declare -A URLS=(
 
     # --- systemd branch (with-systmed) — 16-systemd.sh ---
     [systemd-${SYSTEMD_VERSION}.tar.gz]="https://github.com/systemd/systemd/archive/refs/tags/v${SYSTEMD_VERSION}.tar.gz"
+
+    # --- Phase 14: Nix single-user offline bootstrap — 17a-install-nix.sh ---
+    # Official static binary tarball (bundles the nix closure + nss-cacert).
+    # SHA-only (releases.nixos.org has no detached GPG sig) → .next-lock flow.
+    [nix-${NIX_VERSION}-x86_64-linux.tar.xz]="https://releases.nixos.org/nix/nix-${NIX_VERSION}/nix-${NIX_VERSION}-x86_64-linux.tar.xz"
 )
 
 # Packages whose upstreams publish a detached GPG signature alongside the tarball.
