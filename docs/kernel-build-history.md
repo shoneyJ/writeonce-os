@@ -50,3 +50,10 @@ initramfs  :      1796418 bytes  sha256=b0f746018a960d2c964a3b4a8bc262e78419d667
 git        : d6d5f6f  dbus socket
 fragment   : sha256=c87c5d86f759…
 reason     : i915 PSR/FBC/DC disable (Broadwell hang mitigation)
+
+## 2026-06-04T23:54:35Z
+bzImage    :     17318400 bytes  sha256=225aff7ef44cc53196107a8c5b93fe95d05cecbc6702dd6d3dd0440dde6e6269
+initramfs  :    118101650 bytes  sha256=c69b7ba8b474a9dad29547b46eb3e1e741d6b01241edd948a2c5990bab59c9f2
+git        : a961ae4  add ignore
+fragment   : sha256=31458083497e…
+reason     : bump 6.12.10 -> 6.18.34 (latest LTS); disabled MODULE_SIG_ALL + added PIPESTATUS guard + kmod-in-container so modules_install stages 6350 modules with depmod metadata; QEMU smoke OK

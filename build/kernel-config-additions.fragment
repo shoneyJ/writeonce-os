@@ -239,3 +239,16 @@ CONFIG_CMDLINE_BOOL=y
 # These are the standard Intel-laptop mitigations. If the hang persists, the next
 # step is i915.modeset=0 (confirm-test → simpledrm console, proves i915 is the cause).
 CONFIG_CMDLINE="console=tty0 root=PARTUUID=b0007001-c0de-4f5e-9abc-000000000002 rootwait rw i915.enable_psr=0 i915.enable_fbc=0 i915.enable_dc=0 init=/usr/lib/systemd/systemd"
+
+# --- Module signing: do NOT auto-sign modules at install time ---
+# The Ubuntu base config sets CONFIG_MODULE_SIG_ALL=y, which makes
+# `make modules_install` run scripts/sign-file on every .ko. In this
+# cross-build that aborts on the first module (openssl "DECODER routines:
+# unsupported" — no usable signing key), so ZERO modules get staged and the
+# T450 loses all =m drivers (iwlwifi wifi, snd-hda audio, …). We don't enforce
+# signatures anyway: Secure Boot is off (see the UEFI section above) and
+# MODULE_SIG_FORCE stays unset, so the kernel happily loads unsigned modules.
+# Turning off auto-sign fixes the build and gates no compiled code (it only
+# affects the install Makefile). Fully disabling CONFIG_MODULE_SIG is a clean
+# follow-up if the dead signing infrastructure is ever worth removing.
+# CONFIG_MODULE_SIG_ALL is not set

@@ -110,6 +110,13 @@ declare -A URLS=(
     [xcb-util-cursor-${XCB_UTIL_CURSOR_VERSION}.tar.xz]="https://xorg.freedesktop.org/archive/individual/xcb/xcb-util-cursor-${XCB_UTIL_CURSOR_VERSION}.tar.xz"
     # Layer 5 — keymap data
     [xkeyboard-config-${XKEYBOARD_CONFIG_VERSION}.tar.xz]="https://www.x.org/releases/individual/data/xkeyboard-config/xkeyboard-config-${XKEYBOARD_CONFIG_VERSION}.tar.xz"
+    # Layer 6 — fallback terminal (xterm) + Athena-widget deps
+    [libXt-${LIBXT_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXt-${LIBXT_VERSION}.tar.xz"
+    [libXpm-${LIBXPM_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXpm-${LIBXPM_VERSION}.tar.xz"
+    [libXmu-${LIBXMU_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXmu-${LIBXMU_VERSION}.tar.xz"
+    [libXaw-${LIBXAW_VERSION}.tar.xz]="https://www.x.org/releases/individual/lib/libXaw-${LIBXAW_VERSION}.tar.xz"
+    # xterm: invisible-island archives, gzip .tgz, integer patch version.
+    [xterm-${XTERM_VERSION}.tgz]="https://invisible-island.net/archives/xterm/xterm-${XTERM_VERSION}.tgz"
 
     # --- Phase 8 / Round 3 — xorg-server + drivers ---
     [eudev-${EUDEV_VERSION}.tar.gz]="https://github.com/eudev-project/eudev/releases/download/v${EUDEV_VERSION}/eudev-${EUDEV_VERSION}.tar.gz"
@@ -197,6 +204,10 @@ declare -A URLS=(
     [tzdata${TZDATA_VERSION}.tar.gz]="https://www.iana.org/time-zones/repository/releases/tzdata${TZDATA_VERSION}.tar.gz"
     [kbd-${KBD_VERSION}.tar.xz]="https://www.kernel.org/pub/linux/utils/kbd/kbd-${KBD_VERSION}.tar.xz"
     [e2fsprogs-${E2FSPROGS_VERSION}.tar.gz]="https://downloads.sourceforge.net/project/e2fsprogs/e2fsprogs/v${E2FSPROGS_VERSION}/e2fsprogs-${E2FSPROGS_VERSION}.tar.gz"
+    # vim = tier-1 base editor. GitHub archive (SHA-only, like iputils). The
+    # -O target name fixes the basename to vim-<ver>.tar.gz regardless of the
+    # archive endpoint's own naming.
+    [vim-${VIM_VERSION}.tar.gz]="https://github.com/vim/vim/archive/v${VIM_VERSION}/vim-${VIM_VERSION}.tar.gz"
 
     # --- systemd branch (with-systmed) — 16-systemd.sh ---
     [systemd-${SYSTEMD_VERSION}.tar.gz]="https://github.com/systemd/systemd/archive/refs/tags/v${SYSTEMD_VERSION}.tar.gz"

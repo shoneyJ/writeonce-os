@@ -137,6 +137,36 @@ step_xkeyboard-config() {
 }
 
 # ============================================================================
+# Layer 6 — fallback terminal (xterm) + Athena-widget dependency chain
+# ============================================================================
+#
+# xterm is the tier-1 guaranteed terminal. The i3 mod+Return binding
+# uses i3-sensible-terminal, which needs a real terminal BINARY to exec;
+# a fresh desktop has no Nix apps yet, so this source-built xterm is what
+# opens until/unless the user installs alacritty etc. from Nix.
+#
+# Dependency chain (all use xorg-macros → need the cross malloc flag):
+#   libXt  (needs libICE+libSM+libX11, all from Layer 2/3)
+#   libXpm (needs libX11)
+#   libXmu (needs libXt + libXext)
+#   libXaw (needs libXmu + libXpm + libXt)  ← the Athena widget set
+#   xterm  (needs libXaw + ncurses + libXft, all present)
+
+step_libXt()  { build_pkg libXt  "libXt-${LIBXT_VERSION}.tar.xz"   $_XORG_CROSS; }
+step_libXpm() { build_pkg libXpm "libXpm-${LIBXPM_VERSION}.tar.xz" $_XORG_CROSS; }
+step_libXmu() { build_pkg libXmu "libXmu-${LIBXMU_VERSION}.tar.xz" $_XORG_CROSS; }
+step_libXaw() { build_pkg libXaw "libXaw-${LIBXAW_VERSION}.tar.xz" $_XORG_CROSS; }
+
+step_xterm() {
+    # xterm uses Thomas Dickey's own configure (not xorg-macros), so it
+    # takes neither $_XORG_CROSS nor --disable-static (build_pkg's
+    # --disable-static is an unrecognized-but-harmless warning here).
+    # --with-app-defaults puts XTerm class resources where Xorg looks.
+    build_pkg xterm "xterm-${XTERM_VERSION}.tgz" \
+        --with-app-defaults=/usr/share/X11/app-defaults
+}
+
+# ============================================================================
 # Driver
 # ============================================================================
 
@@ -156,6 +186,8 @@ STEPS=(
     xcb-util-renderutil xcb-util-cursor
     # Layer 5
     xkeyboard-config
+    # Layer 6 — fallback terminal (must stay in dependency order)
+    libXt libXpm libXmu libXaw xterm
 )
 
 if [[ $# -eq 0 ]]; then

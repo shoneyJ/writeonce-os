@@ -226,9 +226,66 @@ step_dejavu() {
 }
 
 # ============================================================================
+# vim (LFS Ch8) — the tier-1 base editor. Console build (no GUI / no X);
+# runs inside xterm. Needed so a fresh system can edit configs before Nix
+# exists (e.g. /etc/nix/nix.conf). Heavier editors (neovim/emacs/VS Code)
+# stay tier-2 via Nix.
+#
+# Custom step (not build_pkg) for three vim-specific reasons:
+#   1. Pre-configure edit of src/feature.h so the system vimrc is /etc/vimrc
+#      (shipped via build/skeleton/etc/vimrc, NOT written here — $LFS/etc is
+#      not copied into staging; only $LFS/usr is).
+#   2. vim's configure runs target binaries for feature detection, which
+#      can't execute under cross-compile. Pre-seed the vim_cv_* + ac_cv_*
+#      cache vars (the standard cross-vim set) so configure trusts them.
+#   3. Post-install `vi` symlink.
+# ============================================================================
+step_vim() {
+    local sentinel="$LOGS/.done-blfs-vim"
+    [[ -f "$sentinel" ]] && { echo "skip vim (already built)"; return 0; }
+    local work="$BUILD_ROOT/work/vim"
+    rm -rf "$work"; mkdir -p "$work"
+    tar -xf "$SOURCES/vim-${VIM_VERSION}.tar.gz" -C "$work" --strip-components=1
+    pushd "$work" >/dev/null
+        # 1. System vimrc lives in /etc (LFS recipe).
+        echo '#define SYS_VIMRC_FILE "/etc/vimrc"' >> src/feature.h
+        local cfg_guess; cfg_guess="$(_find_config_guess)"
+        # 2. Cross-compile feature-detection cache (vim can't run target
+        #    test binaries). These are the canonical cross-vim answers for
+        #    a glibc/ncurses Linux target.
+        env \
+            vim_cv_toupper_broken=no \
+            vim_cv_terminfo=yes \
+            vim_cv_tgetent=zero \
+            vim_cv_getcwd_broken=no \
+            vim_cv_stat_ignores_slash=no \
+            vim_cv_memmove_handles_overlap=yes \
+            vim_cv_bcopy_handles_overlap=yes \
+            vim_cv_memcpy_handles_overlap=yes \
+            ac_cv_sizeof_int=4 \
+        ./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
+            --host="$LFS_TGT" --build="$("$cfg_guess")" \
+            --with-tlib=ncurses \
+            --enable-multibyte \
+            --enable-gui=no \
+            --without-x \
+            --disable-gpm \
+            --disable-gtktest \
+            2>&1 | tee "$LOGS/blfs-vim-configure.log" && \
+        make -j"$(nproc)"           2>&1 | tee "$LOGS/blfs-vim-make.log" && \
+        make DESTDIR="$LFS" install 2>&1 | tee "$LOGS/blfs-vim-install.log" \
+            || { popd >/dev/null; echo "ERROR: vim failed" >&2; return 1; }
+        # 3. vi → vim convenience symlink (LFS recipe).
+        ln -sfv vim "$LFS/usr/bin/vi"
+    popd >/dev/null
+    touch "$sentinel"
+    echo "<<< vim done"
+}
+
+# ============================================================================
 # Driver
 # ============================================================================
-STEPS=(kmod util_linux procps_ng shadow bzip2 tzdata kbd e2fsprogs dejavu)
+STEPS=(kmod util_linux procps_ng shadow bzip2 tzdata kbd e2fsprogs dejavu vim)
 
 if [[ $# -eq 0 ]]; then
     for s in "${STEPS[@]}"; do

@@ -47,8 +47,10 @@ ESP_DIR="$( mktemp -d -t wo-qemu-esp-XXXXXX )"
 ESP_IMG="$ESP_DIR/esp.img"
 trap 'rm -rf "$ESP_DIR"' EXIT
 
-# 128 MiB is plenty for kernel + initramfs + bootloader.
-dd if=/dev/zero of="$ESP_IMG" bs=1M count=128 status=none
+# 512 MiB ESP: the transitional initramfs carries the full =m module set
+# (~113 MiB) since 6.18, so bzImage(17M)+BOOTX64(17M)+initramfs(113M) blows
+# past the old 128 MiB sizing (mtools "Disk full"). 512M leaves headroom.
+dd if=/dev/zero of="$ESP_IMG" bs=1M count=512 status=none
 mkfs.vfat -F32 -n WRITEONCE "$ESP_IMG" >/dev/null
 
 # Mirror the on-USB layout: /EFI/BOOT/BOOTX64.EFI is the firmware's

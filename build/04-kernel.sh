@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build/04-kernel.sh — cross-build Linux 6.12 for the ThinkPad T450.
+# build/04-kernel.sh — cross-build Linux 6.18 for the ThinkPad T450.
 #
 # Steps:
 #   kernel-extract         expand sources into work/
@@ -101,13 +101,20 @@ step_kernel-build() {
 
 step_kernel-modules-stage() {
     local stage="$BUILD_ROOT/artifacts/modules-stage"
+    local rc
     rm -rf "$stage"
     pushd "$KERNEL_WORK" >/dev/null
+        # `make … | tee` masks make's exit (same trap guarded in kernel-build):
+        # a failed modules_install (e.g. sign-file dying when CONFIG_MODULE_SIG_ALL
+        # can't load a key) would otherwise stage zero modules yet still get
+        # sentinel'd "done". Capture PIPESTATUS and fail loudly instead.
         make "${CROSS[@]}" \
              INSTALL_MOD_PATH="$stage" \
              INSTALL_MOD_STRIP=1 \
              modules_install                  2>&1 | tee "$LOGS/kernel-modules-install.log"
+        rc=${PIPESTATUS[0]}
     popd >/dev/null
+    [[ "$rc" -eq 0 ]] || { echo "ERROR: modules_install failed (rc=$rc)" >&2; return 1; }
     echo "    modules staged: $(du -sh $stage | awk '{print $1}') -> $stage"
 }
 

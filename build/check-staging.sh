@@ -156,6 +156,40 @@ for b in mount modprobe ps agetty login passwd; do
 done
 
 # ---------------------------------------------------------------------------
+# Base editor (tier-1). A fresh system must be able to edit configs
+# (/etc/nix/nix.conf, fstab, network) BEFORE Nix exists — same chicken-and-
+# egg as the terminal. vim is source-built by 14-base-userspace.sh; `vi` is
+# its symlink. terminfo/share entries are NOT the editor — assert the binary.
+# ---------------------------------------------------------------------------
+
+echo
+echo "== base editor =="
+
+# vim — must be a real executable.
+if [ -x "$STAGING/usr/bin/vim" ]; then
+    pass "usr/bin/vim"
+else
+    fail "usr/bin/vim missing (build via 14-base-userspace.sh vim)"
+fi
+
+# vi — symlink to vim; -x follows it, so this also confirms the target
+# resolves inside staging.
+if [ -x "$STAGING/usr/bin/vi" ]; then
+    pass "usr/bin/vi (→ vim)"
+else
+    fail "usr/bin/vi missing or dangling (ln -sv vim /usr/bin/vi in step_vim)"
+fi
+
+# /etc/vimrc — vim was built with SYS_VIMRC_FILE=/etc/vimrc; shipped via
+# build/skeleton/etc/vimrc. Without it vim still runs, but :syntax/defaults
+# won't be set — flag it so the skeleton overlay isn't silently dropped.
+if [ -f "$STAGING/etc/vimrc" ]; then
+    pass "etc/vimrc (system vimrc)"
+else
+    fail "etc/vimrc missing (build/skeleton/etc/vimrc not staged)"
+fi
+
+# ---------------------------------------------------------------------------
 # System users in passwd (writeonce-bootstrap needs messagebus = UID 99)
 # ---------------------------------------------------------------------------
 
