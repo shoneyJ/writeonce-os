@@ -51,6 +51,9 @@ COMMON=(
     -e HOME=/work/.container-home
     -e RUSTUP_HOME=/root/.rustup
     -e CARGO_HOME=/work/.cargo-cache
+    # Forward the build-time flavor selector so in-container scripts (setup-env.sh)
+    # see it; if unset on the host, setup-env.sh defaults it. e.g. FLAVOR=x just phase-8a
+    -e FLAVOR
 )
 
 # Interactive shell if no args, otherwise run the command.

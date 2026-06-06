@@ -148,3 +148,35 @@ an account). Just network access to the cache is required.
    the real GPU is authoritative.
 4. **Footprint:** staging the base Nix closure adds ~hundreds of MB to the image
    (`du -sh $STAGING/nix`); the desktop closure (installed at runtime) is larger.
+
+## Build-time flavor profiles
+
+To stop the flavors diverging across branches (a shared fix had to be applied to
+each), the build is now **profile-driven** — one tree, `FLAVOR` selects the flavor:
+
+- `build/flavors/<name>.conf` declares the axes: `FLAVOR_INIT` (systemd|rust),
+  `FLAVOR_DISPLAY` (wayland|x11), `FLAVOR_DE` (hyprland|i3more), `FLAVOR_PKG`
+  (nix|source), `FLAVOR_KERNEL` (kernel pin).
+- `build/setup-env.sh` sources `flavors/$FLAVOR.conf` after `versions.env`
+  (default `systemd-wayland-hyprland`), exports the axis vars, and overrides
+  `LINUX_VERSION` from `FLAVOR_KERNEL`. `build/in-container.sh` forwards `-e FLAVOR`.
+- `build/skeleton/` → `common/` (shared) + `<flavor>/` (init/display/DE/pkg files);
+  `17-stage-sysroot.sh` overlays `common/` then `$FLAVOR` (flavor wins).
+- Divergent steps are axis-gated: `16-systemd.sh` (FLAVOR_INIT=systemd),
+  `17a-install-nix.sh` (FLAVOR_PKG=nix). Numbered scripts `00–14` stay shared.
+
+**Done now:** framework + the `systemd-wayland-hyprland` flavor (default build is
+byte-for-byte unchanged — verified: `skeleton/common/ ∪ skeleton/systemd-wayland-hyprland/`
+== the pre-split skeleton). `systemd-x11-i3` and `rust-x11-i3` are declared configs only.
+
+**Migrating another flavor (the follow-on recipe), e.g. `systemd-x11-i3` from `with-systmed`:**
+1. `git merge`/cherry-pick that branch's build-script diffs into this tree, putting the
+   flavor-conditional parts behind the axis vars (e.g. the X11 desktop scripts `09–11`
+   gated on `FLAVOR_DISPLAY=x11`/`FLAVOR_DE=i3more`; its install/kernel-config differences
+   gated likewise). Numbered scripts shared by both flavors stay shared.
+2. Populate `build/skeleton/systemd-x11-i3/` from that branch's skeleton (its
+   `.xinitrc`, i3 config, startx `.bash_profile`, X11 pam.d/login, …). Re-run the
+   union check against that branch's staged skeleton.
+3. Build with `FLAVOR=systemd-x11-i3` and verify on the target.
+The `rust-x11-i3` flavor is the largest (Rust-PID1 boot path + `writeonce-installer` +
+kernel 6.12 without the Ubuntu base config) and should be migrated last.

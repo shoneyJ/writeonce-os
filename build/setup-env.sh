@@ -23,6 +23,22 @@ export BUILD_ROOT
 # shellcheck disable=SC1091
 source "$BUILD_ROOT/versions.env"
 
+# Build-time flavor profile. FLAVOR selects build/flavors/<name>.conf, which sets
+# the axis vars (FLAVOR_INIT / FLAVOR_DISPLAY / FLAVOR_DE / FLAVOR_PKG) and may
+# override pins such as the kernel. Default = the active flavor on this branch,
+# so a plain build is unchanged. See README "Flavors".
+export FLAVOR="${FLAVOR:-systemd-wayland-hyprland}"
+if [[ -f "$BUILD_ROOT/flavors/$FLAVOR.conf" ]]; then
+    # shellcheck disable=SC1090
+    source "$BUILD_ROOT/flavors/$FLAVOR.conf"
+else
+    echo "setup-env.sh: unknown FLAVOR='$FLAVOR' (see build/flavors/*.conf)" >&2
+    exit 1
+fi
+# A flavor may pin a different kernel than versions.env's default.
+[[ -n "${FLAVOR_KERNEL:-}" ]] && LINUX_VERSION="$FLAVOR_KERNEL"
+export FLAVOR_INIT FLAVOR_DISPLAY FLAVOR_DE FLAVOR_PKG LINUX_VERSION
+
 export LFS="$BUILD_ROOT/sysroot"
 export LFS_TOOLS="$BUILD_ROOT/cross-tools"
 export SOURCES="$BUILD_ROOT/sources"

@@ -129,8 +129,9 @@ echo "==== [3a/8] Rust crate binaries: skipped (systemd branch — none staged)"
 mkdir -p "$STAGING/sbin" "$STAGING/usr/sbin" "$STAGING/usr/bin"
 # Ensure /sbin/init resolves (systemd installs /usr/lib/systemd/systemd; some
 # firmware/GRUB configs default init=/sbin/init). Create the symlink if the
-# systemd build didn't already.
-if [[ -e "$STAGING/usr/lib/systemd/systemd" && ! -e "$STAGING/usr/sbin/init" ]]; then
+# systemd build didn't already. Only for the systemd init flavor.
+if [[ "${FLAVOR_INIT:-systemd}" == systemd \
+      && -e "$STAGING/usr/lib/systemd/systemd" && ! -e "$STAGING/usr/sbin/init" ]]; then
     ln -sf ../lib/systemd/systemd "$STAGING/usr/sbin/init"
     echo "    symlinked /usr/sbin/init → ../lib/systemd/systemd"
 fi
@@ -161,10 +162,20 @@ if [[ -d "$LFS/etc" ]]; then
     echo "    staged $(find "$LFS/etc" -mindepth 1 -maxdepth 1 | wc -l) top-level /etc entries"
 fi
 
-# ---- 4. overlay the skeleton tree ------------------------------------------
+# ---- 4. overlay the skeleton tree (common + active flavor) -----------------
+# Build-time profile: skeleton/common/ is shared by all flavors; skeleton/<FLAVOR>/
+# carries the init/display/DE/pkg-specific files and is applied second so it wins.
 echo
-echo "==== [4/8] Overlaying build/skeleton/ (wins over package /etc)"
-cp -a build/skeleton/. "$STAGING/"
+echo "==== [4/8] Overlaying build/skeleton: common + flavor ($FLAVOR)"
+cp -a build/skeleton/common/. "$STAGING/"
+if [[ -d "build/skeleton/$FLAVOR" ]]; then
+    cp -a "build/skeleton/$FLAVOR/." "$STAGING/"
+    echo "    overlaid skeleton/common + skeleton/$FLAVOR"
+else
+    echo "error: build/skeleton/$FLAVOR/ missing — flavor '$FLAVOR' is declared but not" >&2
+    echo "       yet populated in this tree (see docs/learning). Only its config exists." >&2
+    exit 1
+fi
 
 # /root home directory (root user).
 mkdir -p "$STAGING/root"

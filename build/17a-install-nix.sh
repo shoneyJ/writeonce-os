@@ -17,6 +17,13 @@ cd "$( dirname "${BASH_SOURCE[0]}" )/.."
 # shellcheck disable=SC1091
 source ./build/setup-env.sh
 
+# Flavor gate: only flavors whose desktop is delivered via Nix bootstrap /nix.
+# Source-built-desktop flavors (FLAVOR_PKG=source) skip this entirely.
+[[ "${FLAVOR_PKG:-nix}" == nix ]] || {
+    echo "17a-install-nix: skip — FLAVOR_PKG=$FLAVOR_PKG (flavor $FLAVOR ships no Nix store)"
+    exit 0
+}
+
 STAGING="${STAGING:-build/staging/sysroot}"
 TARBALL="$SOURCES/nix-${NIX_VERSION}-x86_64-linux.tar.xz"
 

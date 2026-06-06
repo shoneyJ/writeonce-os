@@ -39,6 +39,28 @@ the toolchain, kernel, or Phase 0–8 substrate has to reach *every* flavor. Kee
    modest refactor — it is the recommended end state.
 5. Build flavors side by side without re-cloning: `git worktree add ../wo-<flavor> <branch>`.
 
+### Build-time profiles (in progress on `wayland-hyprland`)
+
+Step 4 above is being implemented — the build is now profile-driven so a flavor is
+chosen at **build time**, not by branch:
+
+- **`build/flavors/<name>.conf`** declares the axes (`FLAVOR_INIT`, `FLAVOR_DISPLAY`,
+  `FLAVOR_DE`, `FLAVOR_PKG`, `FLAVOR_KERNEL`). One per flavor:
+  `systemd-wayland-hyprland`, `systemd-x11-i3`, `rust-x11-i3`.
+- **`build/setup-env.sh`** reads `FLAVOR` (default `systemd-wayland-hyprland`), sources that
+  conf, exports the axis vars, and lets it override the kernel pin. Select another with
+  `FLAVOR=<name> just <recipe>` (`build/in-container.sh` forwards it into the container).
+- **`build/skeleton/`** is split into `common/` (shared) + `<flavor>/` (init/display/DE/pkg
+  files); `17-stage-sysroot.sh` overlays `common/` then the active flavor.
+- Divergent build steps are axis-gated: `16-systemd.sh` runs only when `FLAVOR_INIT=systemd`,
+  `17a-install-nix.sh` only when `FLAVOR_PKG=nix`.
+
+Status: the framework + the **`systemd-wayland-hyprland`** flavor are migrated (a default
+build is byte-for-byte unchanged). The other two flavors are **declared** in `build/flavors/`;
+their build/skeleton content is folded in from their branches in follow-on passes — recipe in
+[`docs/learning/phase-8-wayland-hyprland-quickshell.md`](docs/learning/phase-8-wayland-hyprland-quickshell.md).
+Once all three are migrated, the flavor branches collapse into this single tree.
+
 ## Status
 
 **Phases 0–8 complete; Phase 9 (i3More desktop) bring-up.** Phases 0–8 land:

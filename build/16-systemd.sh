@@ -26,6 +26,13 @@ source ./setup-env.sh
 # shellcheck disable=SC1091
 source ./blfs-pkg.sh
 
+# Flavor gate: systemd is the init only for FLAVOR_INIT=systemd flavors. The rust
+# flavor (writeonce-pid1) builds its init from the Rust crates instead.
+[[ "${FLAVOR_INIT:-systemd}" == systemd ]] || {
+    echo "16-systemd: skip — FLAVOR_INIT=$FLAVOR_INIT (flavor $FLAVOR uses a non-systemd init)"
+    exit 0
+}
+
 # systemd's link deps must already be in $LFS.
 for need in usr/lib/libcap.so usr/lib/libmount.so usr/lib/libkmod.so usr/lib/libpam.so; do
     [[ -e "$LFS/$need" ]] || echo "warn: $LFS/$need missing — systemd link may fail (build util-linux/libcap/kmod/pam first)" >&2
