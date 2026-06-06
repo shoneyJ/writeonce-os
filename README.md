@@ -2,6 +2,43 @@
 
 A from-scratch Linux distribution, built as a learning vehicle for kernel internals and userspace primitives. Target: a ThinkPad T450 running the user's own desktop environment, [i3More](https://github.com/shoneyj/i3More), on top of an OS where every layer below it was understood and (where reasonable) re-implemented by the author.
 
+## Flavors (git branches)
+
+WriteOnce is explored as several **flavors** — the same "Rust + kernel own the boot
+path" philosophy, different substrate choices along four independent axes
+(init · display · desktop · packaging). Each flavor lives on its own branch:
+
+| Branch | Init | Display | Desktop | DE packaging | Kernel |
+|---|---|---|---|---|---|
+| `master` | Rust PID 1 (`writeonce-pid1` + `writeonce-svc`) | Xorg (X11) | i3 + i3More | source-built | 6.12 LTS |
+| `with-systmed` | systemd | Xorg (X11) | i3 + i3More | source-built | 6.18 |
+| `wayland-hyprland` | systemd | Wayland (Hyprland; XWayland covers X11 apps) | Hyprland + Quickshell | Nix (`nix profile`, single-user) | 6.18 |
+
+(`xwayland` is a dead Wayfire spike — slated for deletion.) The body of this README
+documents the `master` lineage; per-flavor specifics live in each branch's
+[`docs/learning/`](docs/learning/) (this branch:
+[`phase-8-wayland-hyprland-quickshell.md`](docs/learning/phase-8-wayland-hyprland-quickshell.md)).
+
+### Branching strategy — how to experiment with a new flavor
+
+Branch-per-flavor is fine for **experiments**, but the axes are combinatorial: a fix to
+the toolchain, kernel, or Phase 0–8 substrate has to reach *every* flavor. Keep it sane:
+
+1. **One common base; fixes flow downstream.** Treat the shared substrate (toolchain,
+   kernel, Phase 0–8, Rust crates) as the base, land shared fixes there, and
+   **forward-merge base → flavor branches** — never maintain the same fix in two places.
+2. **A flavor branch carries only its differentiating diff** (its init/display/DE choice
+   + skeleton config), kept small and regularly merged up from the base so it doesn't rot.
+3. **Throwaway spikes stay throwaway** — merge or delete promptly (see `xwayland`); don't
+   let dead experiments accumulate as branches.
+4. **Once ≥3 flavors are worth keeping, collapse the branches into one tree with build-time
+   profiles** — the distro "spin" model. A `flavors/<name>.conf` selects
+   `INIT`/`DISPLAY`/`DE`/`PKG`, and `17-stage-sysroot.sh` overlays `skeleton/common/` +
+   `skeleton/<flavor>/` by `$FLAVOR`. One pipeline, shared fixes apply everywhere, no
+   divergence. The numbered scripts + skeleton overlay + `versions.env` already make this a
+   modest refactor — it is the recommended end state.
+5. Build flavors side by side without re-cloning: `git worktree add ../wo-<flavor> <branch>`.
+
 ## Status
 
 **Phases 0–8 complete; Phase 9 (i3More desktop) bring-up.** Phases 0–8 land:
