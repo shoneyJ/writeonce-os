@@ -17,7 +17,7 @@ replacing the X11/i3 `startx` flow. Config only — the binaries come from Nix (
 - [x] **Hyprland config** `…/.config/hypr/hyprland.conf` — single file, no plugins;
   `kb_layout=de` (matches `/etc/vconsole.conf`); blur/shadows off + `vfr=true` (Broadwell);
   `exec-once` for dbus env, pipewire/wireplumber, `quickshell -c wo`; SUPER keybinds,
-  `$term=kitty`, `wpctl` volume keys.
+  `$term=alacritty`, `wpctl` volume keys.
 - [x] **Quickshell bar** `…/.config/quickshell/wo/shell.qml` — thin top bar (Hyprland
   workspaces, clock, default-sink volume) using only standard Quickshell+Qt modules (no
   Kirigami/QtPositioning/Qt5Compat).
@@ -41,4 +41,4 @@ desktop config, launched on tty1 autologin — inert until the binaries exist (W
 
 - The thin `shell.qml` assumes the nixpkgs Quickshell build provides `Quickshell.Hyprland`
   + `Quickshell.Services.Pipewire` (it does). A very old nixpkgs pin could lack `quickshell`.
-- Terminal is `kitty` (from Nix); ensure it's in the desktop package set (W3 `desktop/flake.nix`).
+- Terminal is `alacritty` (from Nix); ensure it's in the desktop package set (W3 `desktop/flake.nix`).

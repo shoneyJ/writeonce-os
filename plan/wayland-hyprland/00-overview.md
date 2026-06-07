@@ -22,6 +22,11 @@ substrate was drafted then parked (`build/16a-wayland-substrate.sh`).
 Selected at build time via the flavor profile (`build/flavors/systemd-wayland-hyprland.conf`
 + `FLAVOR` in `setup-env.sh`) — see [build-time flavor profiles](../../docs/learning/phase-8-wayland-hyprland-quickshell.md).
 
+**Desktop + `~/.config` are managed by Home Manager** (`/etc/writeonce/home`), which
+supersedes the earlier desktop flake + raw skeleton configs; the terminal is **alacritty**
+(was kitty); the dev toolchain (vscode/neovim/tmux) is a separate `nix develop` devShell
+(`/etc/writeonce/devshell`). See [`home-manager-and-devshell.md`](../../docs/learning/home-manager-and-devshell.md).
+
 ## Phase map
 
 | #  | Phase                                              | Status | File |
@@ -55,5 +60,5 @@ the common base, the other flavors fold in later.
 | W2 | Skeleton config stages; `qmllint`/`qs -c wo --check` on `shell.qml`; default-flavor stage unchanged |
 | W3 | First boot: `writeonce-nix-init` registers Nix → `nix --version` works; `/nix` single-user |
 | W4 | Ethernet DHCP lease or `iwctl`/auto-connect to the provisioned SSID; default route before the Nix install |
-| W5 | Autologin tty1 → `wo-session` installs + launches Hyprland; Quickshell bar; `Mod+Return` → kitty |
+| W5 | Autologin tty1 → `wo-session` installs + launches Hyprland; Quickshell bar; `Mod+Return` → alacritty |
 | W6 | XWayland X-app runs; richer Quickshell modules load; (optional) pre-baked closure → no first-boot network |

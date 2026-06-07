@@ -1,8 +1,10 @@
 # What `nix profile install` actually does
 
-WriteOnce installs its desktop with one command —
-`nix profile install path:/etc/writeonce/desktop` (run by `wo-session` on first
-boot). This note unpacks what Nix does behind that line, single-user, no daemon.
+This note unpacks what `nix profile install <flakeref>` does behind the scenes,
+single-user, no daemon. (WriteOnce has since moved the desktop install to **Home
+Manager** — see [`home-manager-and-devshell.md`](home-manager-and-devshell.md) — but
+HM builds a user profile generation by the *same* mechanism described here, so this
+remains the reference for how Nix profiles work.)
 
 ## The store, in one paragraph
 
@@ -19,7 +21,7 @@ runtime closure).
 1. **Resolve + evaluate.** The installable (`path:/etc/writeonce/desktop`, a
    flake) is fetched and its Nix expression *evaluated* to a **derivation** and
    its output store path(s). Our flake's output is a `buildEnv` that bundles
-   hyprland/quickshell/kitty/… into one path.
+   hyprland/quickshell/alacritty/… into one path.
 
 2. **Realize (build or substitute).** For each needed store path not already
    present, Nix asks the **substituters** in `nix.conf`
@@ -42,7 +44,7 @@ runtime closure).
    `~/.nix-profile` (classic) / `$XDG_STATE_HOME/nix/profiles/profile`
    (`~/.local/state/nix/profiles/profile`, modern) points at the current
    generation; `/etc/profile.d/nix.sh` puts `…/profile/bin` on `PATH`, so
-   `Hyprland`, `qs`, `kitty` appear.
+   `Hyprland`, `qs`, `alacritty` appear.
 
 5. **GC roots + rollback.** Profile generations are **GC roots** (symlinked under
    `/nix/var/nix/gcroots/`), so `nix store gc` deletes only paths *no* generation
