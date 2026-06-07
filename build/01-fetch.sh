@@ -193,6 +193,10 @@ declare -A URLS=(
     [iputils-${IPUTILS_VERSION}.tar.gz]="https://github.com/iputils/iputils/archive/refs/tags/${IPUTILS_VERSION}.tar.gz"
     [dhcpcd-${DHCPCD_VERSION}.tar.xz]="https://github.com/NetworkConfiguration/dhcpcd/releases/download/v${DHCPCD_VERSION}/dhcpcd-${DHCPCD_VERSION}.tar.xz"
 
+    # --- mDNS / service discovery (13a-mdns.sh) — SHA-only, .next-lock flow ---
+    [libdaemon-${LIBDAEMON_VERSION}.tar.gz]="https://0pointer.de/lennart/projects/libdaemon/libdaemon-${LIBDAEMON_VERSION}.tar.gz"
+    [avahi-${AVAHI_VERSION}.tar.gz]="https://github.com/avahi/avahi/releases/download/v${AVAHI_VERSION}/avahi-${AVAHI_VERSION}.tar.gz"
+
     # --- base userspace (LFS Ch8 runtime essentials — 14-base-userspace.sh) ---
     [kmod-${KMOD_VERSION}.tar.xz]="https://www.kernel.org/pub/linux/utils/kernel/kmod/kmod-${KMOD_VERSION}.tar.xz"
     [util-linux-${UTIL_LINUX_VERSION}.tar.xz]="https://www.kernel.org/pub/linux/utils/util-linux/v$(echo ${UTIL_LINUX_VERSION}|cut -d. -f1-2)/util-linux-${UTIL_LINUX_VERSION}.tar.xz"

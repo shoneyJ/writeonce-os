@@ -1,0 +1,28 @@
+{
+  "schema_version": "0.1.0",
+  "_comment_1": "Optional defaults for the WriteOnce installer.",
+  "_comment_2": "Auto-discovered (in order):",
+  "_comment_3": "  <artifacts-dir>/target-os.json",
+  "_comment_4": "  ./target-os.json",
+  "_comment_5": "  ~/.config/writeonce-os/target-os.json",
+  "_comment_6": "Or pass an explicit path via --spec PATH.",
+  "_comment_7": "Any field omitted or null triggers an interactive prompt.",
+  "_comment_8": "Password is ALWAYS prompted regardless of what is in this file.",
+
+  "partitions": {
+    "esp_mib": 512,
+    "root_gib": null
+  },
+
+  "user": {
+    "name": "shoney",
+    "real_name": "Shoney Arickathil",
+    "shell": "/bin/bash",
+    "groups": ["wheel", "video", "audio", "input", "plugdev"]
+  },
+
+  "keyboard": {
+    "layout": "de",
+    "variant": "nodeadkey"
+  }
+}

@@ -99,7 +99,7 @@ else
 fi
 
 echo "==== [5b/6] Wi-Fi for first-boot internet (optional) ===="
-# The desktop (Hyprland/Quickshell) is fetched from Nix on first boot, which
+# Your Wayland compositor + apps are fetched from Nix after first boot, which
 # needs internet. Ethernet works with NO config (dhcpcd.service is enabled).
 # For Wi-Fi, provision an iwd profile now; blank SSID = skip (ethernet only).
 WIFI_SSID_HINT="${WIFI_SSID_HINT:-HOME_SA}"   # workstation's current network
@@ -130,6 +130,32 @@ else
     echo "    non-interactive — skipped Wi-Fi (provision /var/lib/iwd/<SSID>.psk manually)"
 fi
 
+echo "==== [5c/6] SSH public key for remote access (optional) ===="
+# WriteOnce enables sshd via Nix (run 'sudo wo-sshd-setup' once on the target).
+# Authorizing your workstation key now makes that first SSH key-only + ready.
+if [[ -t 0 ]]; then
+    SSH_USER_HOME=$(getent passwd "${SUDO_USER:-root}" | cut -d: -f6)
+    DEFAULT_PUBKEY=""
+    for k in "$SSH_USER_HOME/.ssh/id_ed25519.pub" "$SSH_USER_HOME/.ssh/id_rsa.pub"; do
+        if [[ -f "$k" ]]; then DEFAULT_PUBKEY="$k"; break; fi
+    done
+    read -r -p "SSH public key to authorize (blank = skip)${DEFAULT_PUBKEY:+ [$DEFAULT_PUBKEY]}: " PUBKEY_PATH
+    PUBKEY_PATH="${PUBKEY_PATH:-$DEFAULT_PUBKEY}"
+    if [[ -n "${PUBKEY_PATH:-}" && -f "$PUBKEY_PATH" ]]; then
+        install -d -m700 "$MNT/home/writeonce/.ssh"
+        cat "$PUBKEY_PATH" >> "$MNT/home/writeonce/.ssh/authorized_keys"
+        chmod 600 "$MNT/home/writeonce/.ssh/authorized_keys"
+        chown -R 1000:1000 "$MNT/home/writeonce/.ssh"
+        echo "    authorized $(basename "$PUBKEY_PATH") (key-only SSH after 'sudo wo-sshd-setup')"
+    elif [[ -n "${PUBKEY_PATH:-}" ]]; then
+        echo "    no key file at '$PUBKEY_PATH' — skipped (password SSH still works)"
+    else
+        echo "    skipped SSH key (password SSH works after 'sudo wo-sshd-setup')"
+    fi
+else
+    echo "    non-interactive — skipped SSH key"
+fi
+
 echo "==== [6/6] sync + unmount ===="
 sync
 umount "$MNT/boot/efi"
@@ -141,5 +167,6 @@ echo "✓ Install complete on $DEV."
 echo "  Remove the install medium and boot the target."
 echo "  Expected: firmware → bzImage (EFI stub) → systemd → multi-user.target →"
 echo "  writeonce-nix-init (registers Nix) → getty autologin (writeonce) →"
-echo "  wo-session → nix profile install the desktop (first boot, needs network) →"
-echo "  Hyprland + Quickshell. First boot waits on the download; later boots are instant."
+echo "  console (writeonce). WriteOnce ships no desktop — install a Wayland compositor"
+echo "  via Nix and launch it. Enable SSH with 'sudo wo-sshd-setup', then from the"
+echo "  workstation: ssh writeonce@writeonce.local"

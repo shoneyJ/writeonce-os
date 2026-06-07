@@ -5,9 +5,10 @@
 # store DB is absent. Follows the official single-user closure-install steps:
 # chown /nix to the primary user, load the store DB from the bundled .reginfo,
 # then install the bundled nix into the default profile (so nix/nix-env/
-# nix-store land on PATH via /etc/profile.d/nix.sh). After this, the desktop
-# closure is realized by wo-session (`nix profile install` from
-# /etc/writeonce/desktop-packages). See plan/phase-14-nix-packages.md.
+# nix-store land on PATH via /etc/profile.d/nix.sh). After this, Nix is ready for
+# the user to install packages at runtime (e.g. OpenSSH via wo-sshd-setup, or a
+# Wayland compositor). See plan/phase-14-nix-packages.md +
+# docs/learning/ssh-and-byo-compositor.md.
 #
 # UNVERIFIED in this environment (no Nix/target available) — review on first
 # real boot; it is idempotent (re-runs are no-ops once the DB exists).

@@ -1,0 +1,22 @@
+# /etc/ssh/sshd_config — WriteOnce. OpenSSH is provided by Nix (run
+# `sudo wo-sshd-setup` once to install + enable it). wo-sshd-setup flips
+# PasswordAuthentication to `no` when an authorized key was provisioned at
+# install time (key-only); otherwise password login (the install-time password)
+# stays available so you are never locked out. UsePAM is off — auth checks
+# /etc/passwd + /etc/shadow directly (this base ships no PAM stack).
+Port 22
+AddressFamily any
+
+PermitRootLogin no
+AllowUsers writeonce
+
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+PasswordAuthentication yes
+KbdInteractiveAuthentication no
+UsePAM no
+
+X11Forwarding no
+PrintMotd no
+PidFile /run/sshd/sshd.pid
+Subsystem sftp internal-sftp

@@ -5,6 +5,17 @@
 > `phase-w6-…`. Rationale + the architecture decision log live in
 > [`../../docs/learning/phase-8-wayland-hyprland-quickshell.md`](../../docs/learning/phase-8-wayland-hyprland-quickshell.md).
 
+> **Update (2026-06): pivoted to a compositor-agnostic base.** The image no longer
+> bakes in or auto-launches Hyprland/Quickshell. It boots to an autologin console
+> with network + Nix + **mDNS (`writeonce.local`)** up; you `sudo wo-sshd-setup`
+> (OpenSSH via Nix) to enable SSH, then install the Wayland compositor of your
+> choice (sway / hyprland / wayfire) via Nix and launch it with your own config.
+> The baked desktop delivery (`wo-session`, `/etc/writeonce/desktop` flake,
+> `~/.config/{hypr,quickshell}`) was removed. See
+> [`../../docs/learning/ssh-and-byo-compositor.md`](../../docs/learning/ssh-and-byo-compositor.md).
+> W1–W4 below (substrate decision, Nix bootstrap, first-boot network) still hold;
+> the desktop is now a runtime choice, not part of the image.
+
 ## Context
 
 This flavor replaces the `with-systmed` X11/i3 desktop with a **Wayland** desktop:

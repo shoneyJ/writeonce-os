@@ -255,6 +255,10 @@ phase-8e:
 phase-8f:
     ./build/in-container.sh --no-network ./build/13-network-stack.sh
 
+# Phase 8f+ — mDNS (libdaemon + avahi) so the target is reachable as writeonce.local.
+phase-8g:
+    ./build/in-container.sh --no-network ./build/13a-mdns.sh
+
 # Base userspace — the LFS Ch8 runtime essentials (kmod, util-linux, procps-ng,
 # shadow, bzip2) into $LFS/usr. coreutils/sed/grep/gzip/tar come from
 # 03-sysroot-temp-tools.sh; this completes the GNU base the boot chain + desktop

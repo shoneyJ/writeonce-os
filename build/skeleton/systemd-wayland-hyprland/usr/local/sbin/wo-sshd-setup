@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# wo-sshd-setup — one-shot: bring up SSH on WriteOnce using OpenSSH from Nix.
+#
+# WriteOnce builds no OpenSSH/OpenSSL (the substrate deliberately omits them).
+# Instead, sshd is delivered via the single-user Nix store, on demand. Run this
+# once as root after first boot; it is idempotent. From the workstation you then
+# `ssh writeonce@writeonce.local` (mDNS via avahi).
+#
+#   1. install openssh from Nix (full flakeref — the bare "nixpkgs" alias does
+#      not resolve out of the box)
+#   2. create the privilege-separation prerequisites (the `sshd` user + /var/empty)
+#   3. generate host keys (ssh-keygen -A)
+#   4. finalize /etc/ssh/sshd_config (key-only if a key was provisioned at install)
+#   5. validate, enable, start sshd.service
+set -euo pipefail
+
+[ "$(id -u)" -eq 0 ] || { echo "wo-sshd-setup: run as root (sudo wo-sshd-setup)" >&2; exit 1; }
+
+NIXBIN=/home/writeonce/.nix-profile/bin
+FLAKEREF='github:NixOS/nixpkgs/nixos-unstable#openssh'
+CONF=/etc/ssh/sshd_config
+
+# 1. OpenSSH from Nix, into the writeonce user profile (the store is single-user,
+#    owned by writeonce — so the install must run AS writeonce, via a login shell
+#    that puts nix on PATH).
+if [ ! -x "$NIXBIN/sshd" ]; then
+    echo "wo-sshd-setup: installing OpenSSH via Nix ($FLAKEREF) — this downloads a closure ..."
+    su - writeonce -c "nix profile add '$FLAKEREF'"
+fi
+[ -x "$NIXBIN/sshd" ] || { echo "wo-sshd-setup: sshd still missing after install" >&2; exit 1; }
+
+# 2. Privilege separation: OpenSSH's default privsep user is 'sshd', chrooting to
+#    an empty, root-owned dir. Both must exist before sshd starts.
+install -d -m755 -o root -g root /var/empty
+id sshd >/dev/null 2>&1 || echo "wo-sshd-setup: WARN: 'sshd' user missing from /etc/passwd — privsep may fail"
+
+# 3. Host keys.
+install -d -m755 /etc/ssh
+"$NIXBIN/ssh-keygen" -A
+
+# 4. Lock down password auth iff a workstation key was provisioned at install.
+if [ -s /home/writeonce/.ssh/authorized_keys ]; then
+    sed -i 's/^PasswordAuthentication .*/PasswordAuthentication no/' "$CONF"
+    echo "wo-sshd-setup: authorized_keys present → PasswordAuthentication no (key-only)"
+else
+    echo "wo-sshd-setup: no authorized_keys → password login (install-time password) stays enabled"
+fi
+
+# 5. Validate config, then enable + start.
+"$NIXBIN/sshd" -t -f "$CONF"
+systemctl enable --now sshd.service
+
+echo "wo-sshd-setup: sshd active. From your workstation:  ssh writeonce@writeonce.local"

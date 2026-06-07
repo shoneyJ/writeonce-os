@@ -6,11 +6,11 @@
 #   - target/.../release/writeonce-{pid1,svc,login,logind,initramfs} +
 #     wo-ctl (the per-Rust-crate boot-path binaries)
 #   - target/x86_64-unknown-uefi/release/writeonce-bootloader.efi
-#   - the Hyprland + Quickshell desktop is delivered via Nix at runtime
-#     (see /etc/writeonce/desktop/flake.nix); its config rides in via the
-#     build/skeleton overlay below — nothing is staged from a DE build here.
-#   - build/skeleton/ overlay (/etc/*, /home/writeonce/* defaults:
-#     .config/hypr, .config/quickshell, /usr/local/bin/wo-session, /etc/nix)
+#   - no desktop is staged — WriteOnce is compositor-agnostic; the user installs
+#     a Wayland compositor (sway/hyprland/wayfire) via Nix at runtime and brings
+#     their own config. See docs/learning/ssh-and-byo-compositor.md.
+#   - build/skeleton/ overlay (/etc/*, /home/writeonce/* defaults: SSH + mDNS
+#     remote access, /etc/nix, network units, .bash_profile)
 #   - crates/writeonce-svc/examples/services/*.toml → /etc/writeonce/services/
 #
 # Output: $STAGING (default: build/staging/sysroot/) — a complete root
@@ -22,8 +22,8 @@
 # Prerequisite ARTIFACTS:
 #   - Phase 0-8 built ($LFS/usr populated)
 #   - Kernel modules + firmware staged (04-kernel.sh, 01-fetch.sh)
-#   - Desktop (Hyprland + Quickshell): delivered via Nix at runtime, not staged
-#     here (see /etc/writeonce/desktop/flake.nix + plan/phase-14-nix-packages.md)
+#   - Desktop: none staged — installed by the user via Nix at runtime
+#     (compositor-agnostic; see docs/learning/ssh-and-byo-compositor.md)
 
 set -euo pipefail
 
@@ -136,17 +136,16 @@ if [[ "${FLAVOR_INIT:-systemd}" == systemd \
     echo "    symlinked /usr/sbin/init → ../lib/systemd/systemd"
 fi
 
-# ---- 3b. desktop environment: delivered via Nix, not staged here -----------
+# ---- 3b. desktop environment: user's choice via Nix, nothing staged --------
 echo
-echo "==== [3b/8] Desktop (Hyprland + Quickshell): via Nix at runtime"
-# The X11/i3 + i3More desktop was replaced by a Wayland desktop (Hyprland
-# compositor + Quickshell shell). Per the project scope these Tier-2 packages
-# come from Nix — see /etc/writeonce/desktop/flake.nix + the wo-session launcher,
-# both staged by the build/skeleton overlay in step [4/8]. A Nix Hyprland
-# closure is self-contained (its own Mesa/Wayland/seatd), so there is nothing
-# to copy from a DE build at this stage. (Prerequisite: the Phase 14 Nix
-# bootstrap — plan/phase-14-nix-packages.md.)
-echo "    desktop config staged via build/skeleton; binaries via Nix profile"
+echo "==== [3b/8] Desktop: none — compositor-agnostic base"
+# WriteOnce ships no desktop. The base boots to a console; the user installs a
+# Wayland compositor (sway / hyprland / wayfire) via Nix at runtime and brings
+# their own config, so there is nothing to stage here. (Prerequisite for the Nix
+# path: the Phase 14 Nix bootstrap — plan/phase-14-nix-packages.md.) Remote
+# access — SSH (wo-sshd-setup) + mDNS (writeonce.local) — comes from the skeleton
+# overlay in step [4/8]; see docs/learning/ssh-and-byo-compositor.md.
+echo "    no desktop staged; SSH + mDNS via skeleton; compositor via Nix at runtime"
 
 # ---- 3c. stage package /etc config -----------------------------------------
 # LFS treats the whole $LFS (including /etc) as the system. Package configs

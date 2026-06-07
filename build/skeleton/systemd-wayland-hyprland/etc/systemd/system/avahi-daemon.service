@@ -1,0 +1,19 @@
+# Avahi mDNS responder — publishes writeonce.local on the LAN. Built daemon-only
+# (--disable-dbus): runs standalone, no system bus needed. Started as root, it
+# drops to the avahi:avahi user (compiled --with-avahi-user=avahi). The runtime
+# dir /run/avahi-daemon is provided by systemd. See etc/avahi/avahi-daemon.conf.
+[Unit]
+Description=Avahi mDNS/DNS-SD Stack (publishes writeonce.local)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/avahi-daemon --no-chroot -f /etc/avahi/avahi-daemon.conf
+RuntimeDirectory=avahi-daemon
+RuntimeDirectoryMode=0755
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

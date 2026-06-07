@@ -31,23 +31,30 @@ Quickshell desktop on the T450 — fixing first-boot issues as they surface.
 3. **Install** — attach the target disk, `just install /dev/sdX` (= `check-staging` +
    `install.sh`); answer the Wi-Fi prompt (or skip for ethernet). Default login: `writeonce`.
 4. **First boot (needs network)** — EFI-stub kernel → systemd → `writeonce-nix-init`
-   (registers Nix) → tty1 autologin → `wo-session` → `nix profile install` the desktop
-   (multi-hundred-MB download, minutes) → `exec Hyprland` → `quickshell -c wo`. Later boots
-   are instant.
+   (registers Nix) + `avahi-daemon` (advertises `writeonce.local`) → tty1 autologin to a
+   **console** (no desktop is launched — WriteOnce is compositor-agnostic). Drive it
+   remotely: `sudo wo-sshd-setup` (installs OpenSSH via Nix + enables sshd) → from the
+   workstation `ssh writeonce@writeonce.local` → `nix profile add …#sway` (or
+   `#hyprland`/`#wayfire`) → `exec sway`. First Nix fetch is multi-hundred-MB; later cached.
+   See [`../../docs/learning/ssh-and-byo-compositor.md`](../../docs/learning/ssh-and-byo-compositor.md).
 
 ## Acceptance / verification
 
-- `nix --version` works (W3); a default route exists before the install (W4).
-- Hyprland starts; `echo $WAYLAND_DISPLAY` non-empty; `/run/user/1000/wayland-1` exists.
-- Quickshell bar shows (clock ticking + ≥1 workspace pill); `Mod+Return` → kitty;
-  `Mod+Q` close; `Mod+Shift+E` → back to shell.
+- `nix --version` works (W3); a default route exists (W4); `ping writeonce.local`
+  resolves from the workstation (mDNS / avahi).
+- `sudo wo-sshd-setup` → `systemctl status sshd` active → `ssh writeonce@writeonce.local`
+  logs in (key provisioned at install, or password).
+- Boot lands at a console (no auto-compositor). A user-installed compositor comes up:
+  `nix profile add …#sway` → `exec sway` → `echo $WAYLAND_DISPLAY` non-empty.
 
-## Debugging (it falls back to a shell, never hangs)
+## Debugging (boots to a console by design, never hangs)
 
-- `journalctl -b -u writeonce-nix-init` (Nix registration) / `-u iwd -u dhcpcd` (network).
-- `nix profile install nixpkgs#hyprland` to reproduce a DE-install error directly.
-- `cat $XDG_RUNTIME_DIR/hypr/*/hyprland.log` (compositor). `just pull-logs /dev/sdX` from the
-  workstation.
+- `journalctl -b -u writeonce-nix-init` (Nix registration) / `-u iwd -u dhcpcd` (network) /
+  `-u avahi-daemon` (mDNS) / `-u sshd` (after `wo-sshd-setup`).
+- `nix profile add github:NixOS/nixpkgs/nixos-unstable#sway` to reproduce a package-install
+  error directly (full flakeref — the bare `nixpkgs` alias won't resolve).
+- Compositor logs are wherever your chosen compositor writes them. `just pull-logs /dev/sdX`
+  from the workstation.
 
 ## Optional cheaper pre-flight (validate the risky new code before flashing)
 

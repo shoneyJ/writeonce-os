@@ -12,5 +12,7 @@ messagebus:x:99:
 systemd-journal:x:70:writeonce
 render:x:105:writeonce
 wheel:x:100:writeonce
+sshd:x:74:
+avahi:x:84:
 nogroup:x:65534:
 writeonce:x:1000:

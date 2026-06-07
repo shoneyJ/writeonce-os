@@ -1,0 +1,22 @@
+# OpenSSH server. The sshd binary comes from Nix (writeonce user profile), so
+# this unit no-ops until `sudo wo-sshd-setup` has installed openssh — the
+# ConditionPathExists guard keeps a premature boot from failing. wo-sshd-setup
+# enables + starts it. The .nix-profile/bin symlink is stable across
+# `nix profile upgrade`, so this ExecStart keeps working after updates.
+[Unit]
+Description=OpenSSH server (via Nix; set up by wo-sshd-setup)
+After=network.target
+Wants=network.target
+ConditionPathExists=/home/writeonce/.nix-profile/bin/sshd
+
+[Service]
+Type=simple
+ExecStartPre=/home/writeonce/.nix-profile/bin/sshd -t -f /etc/ssh/sshd_config
+ExecStart=/home/writeonce/.nix-profile/bin/sshd -D -f /etc/ssh/sshd_config
+RuntimeDirectory=sshd
+RuntimeDirectoryMode=0755
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
