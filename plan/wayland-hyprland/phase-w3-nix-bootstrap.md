@@ -26,7 +26,7 @@ package definitions authored — consumption only.
   `nix-store --load-db < /nix/.reginfo`, install the bundled nix into the default profile.
 - [x] **Environment** `etc/profile.d/nix.sh` (profiles on PATH + `NIX_SSL_CERT_FILE` from the
   bundled `nss-cacert`); `etc/nix/nix.conf` (flakes, cache, single-user).
-- [x] **Desktop set** `etc/writeonce/desktop/flake.nix` — `nixpkgs#{hyprland,quickshell,alacritty,
+- [x] **Desktop set** `etc/writeonce/desktop/flake.nix` — `nixpkgs#{hyprland,quickshell,kitty,
   xdg-desktop-portal-hyprland,wl-clipboard}`, consumed by `wo-session`.
 
 ## Deliverable

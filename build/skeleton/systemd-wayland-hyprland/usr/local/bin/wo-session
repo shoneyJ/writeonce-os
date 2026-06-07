@@ -1,11 +1,11 @@
 #!/bin/sh
 # /usr/local/bin/wo-session — WriteOnce Wayland (Hyprland) session launcher.
 #
-# Run (not exec'd) from ~/.bash_profile on tty1 after autologin. The desktop
-# (Hyprland, Quickshell, alacritty) + its ~/.config are managed by Home Manager
-# — /etc/writeonce/home/{flake,home}.nix. This script:
+# Run (not exec'd) from ~/.bash_profile on tty1 after autologin. The compositor
+# + shell (Hyprland, Quickshell, terminal) are Tier-2 Nix packages declared in
+# /etc/writeonce/desktop/flake.nix. This script:
 #   1. exports the Wayland/Qt session environment,
-#   2. builds + activates the Home Manager generation on first boot (needs network),
+#   2. realizes the desktop flake from Nix on first boot (needs network),
 #   3. exec's Hyprland.
 # On any failure it exits non-zero so ~/.bash_profile falls back to a shell
 # (never hangs the only console).
@@ -27,10 +27,10 @@ export WLR_NO_HARDWARE_CURSORS=1
 # XDG_RUNTIME_DIR (/run/user/<uid>) is provided by logind (pam_systemd).
 [ -d "${XDG_RUNTIME_DIR:-}" ] || echo "wo-session: warning: XDG_RUNTIME_DIR unset (logind?)" >&2
 
-# ---- realize the desktop with Home Manager on first boot -------------------
+# ---- realize the desktop from Nix on first boot ----------------------------
 if ! command -v Hyprland >/dev/null 2>&1; then
-    if command -v nix >/dev/null 2>&1 && [ -e /etc/writeonce/home/flake.nix ]; then
-        echo "wo-session: first boot — building the desktop with Home Manager (needs network)…"
+    if command -v nix >/dev/null 2>&1 && [ -e /etc/writeonce/desktop/flake.nix ]; then
+        echo "wo-session: first boot — installing the desktop from Nix (needs network)…"
         # Wait for a default route — iwd association + dhcpcd lease take a few
         # seconds, and multi-user.target does not guarantee network-online.
         n=0
@@ -38,28 +38,19 @@ if ! command -v Hyprland >/dev/null 2>&1; then
             sleep 2; n=$((n + 1))
         done
         ip route 2>/dev/null | grep -q '^default' \
-            || echo "wo-session: no network yet — HM build may fail; check ethernet/Wi-Fi." >&2
-        # Build the Home Manager generation (pinned by /etc/writeonce/home/flake.lock)
-        # and run its activation script — installs packages + symlinks ~/.config.
-        # Idempotent: a later boot re-activates the same generation (no-op).
-        hm=$(nix build --no-link --print-out-paths \
-                /etc/writeonce/home#homeConfigurations.writeonce.activationPackage 2>&1) \
-            && "$hm/activate" \
-            || echo "wo-session: Home Manager activation failed: $hm" >&2
-        # Pick up the freshly-built HM profile in this already-running shell.
-        [ -d "$HOME/.nix-profile/bin" ] && PATH="$HOME/.nix-profile/bin:$PATH"
-        [ -r "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh" ] \
-            && . "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
+            || echo "wo-session: no network yet — nix install may fail; check ethernet/Wi-Fi." >&2
+        # One declarative, pinned profile generation (see desktop/flake.nix).
+        nix profile install path:/etc/writeonce/desktop \
+            || echo "wo-session: 'nix profile install path:/etc/writeonce/desktop' failed" >&2
     else
         echo "wo-session: Nix is not bootstrapped yet (Phase 14) — cannot start Hyprland." >&2
-        echo "            Bootstrap Nix, then build the HM generation:" >&2
-        echo "            nix run /etc/writeonce/home#homeConfigurations.writeonce.activationPackage" >&2
+        echo "            Bootstrap Nix, then: nix profile install path:/etc/writeonce/desktop" >&2
         exit 1
     fi
 fi
 
 command -v Hyprland >/dev/null 2>&1 || {
-    echo "wo-session: Hyprland still unavailable after HM activation — dropping to shell." >&2
+    echo "wo-session: Hyprland still unavailable after install — dropping to shell." >&2
     exit 1
 }
 

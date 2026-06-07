@@ -11,7 +11,7 @@
   After login, the Hyprland desktop starts automatically.
 
   Useful keybindings (Hyprland):
-    Mod+Return         alacritty (terminal)
+    Mod+Return         kitty (terminal)
     Mod+Q              close window
     Mod+Shift+E        log out
     Mod+F              fullscreen

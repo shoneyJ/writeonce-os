@@ -31,16 +31,15 @@ Quickshell desktop on the T450 — fixing first-boot issues as they surface.
 3. **Install** — attach the target disk, `just install /dev/sdX` (= `check-staging` +
    `install.sh`); answer the Wi-Fi prompt (or skip for ethernet). Default login: `writeonce`.
 4. **First boot (needs network)** — EFI-stub kernel → systemd → `writeonce-nix-init`
-   (registers Nix) → tty1 autologin → `wo-session` → **Home Manager** builds + activates
-   the user generation (`/etc/writeonce/home`, installs packages + symlinks `~/.config`;
-   multi-hundred-MB download, minutes) → `exec Hyprland` → `quickshell -c wo`. Later boots
-   are instant. (See `docs/learning/home-manager-and-devshell.md`.)
+   (registers Nix) → tty1 autologin → `wo-session` → `nix profile install` the desktop
+   (multi-hundred-MB download, minutes) → `exec Hyprland` → `quickshell -c wo`. Later boots
+   are instant.
 
 ## Acceptance / verification
 
 - `nix --version` works (W3); a default route exists before the install (W4).
 - Hyprland starts; `echo $WAYLAND_DISPLAY` non-empty; `/run/user/1000/wayland-1` exists.
-- Quickshell bar shows (clock ticking + ≥1 workspace pill); `Mod+Return` → alacritty;
+- Quickshell bar shows (clock ticking + ≥1 workspace pill); `Mod+Return` → kitty;
   `Mod+Q` close; `Mod+Shift+E` → back to shell.
 
 ## Debugging (it falls back to a shell, never hangs)

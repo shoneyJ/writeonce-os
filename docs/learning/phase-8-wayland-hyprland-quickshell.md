@@ -72,7 +72,7 @@ overlay step):
   only standard Quickshell+Qt modules (no Kirigami/QtPositioning/Qt5Compat).
 - `etc/nix/nix.conf` — single-user Nix baseline (flakes + cache).
 - `etc/writeonce/desktop/flake.nix` — the Tier-2 DE closure (`nixpkgs#hyprland`,
-  `quickshell`, `alacritty`, `xdg-desktop-portal-hyprland`, `wl-clipboard`). Consumption
+  `quickshell`, `kitty`, `xdg-desktop-portal-hyprland`, `wl-clipboard`). Consumption
   only — no `*.nix` authored.
 - `home/writeonce/.bash_profile` — sources Nix profile, launches `wo-session` on tty1.
 - `etc/motd`, `getty@tty1.service.d/autologin.conf` — text updated for Hyprland.
@@ -142,7 +142,7 @@ an account). Just network access to the cache is required.
 3. **Verify on the T450**: first boot runs `writeonce-nix-init` → `nix --version`
    works; autologin tty1 → `wo-session` installs + launches Hyprland;
    `$WAYLAND_DISPLAY` set, `/run/user/1000/wayland-1` exists; Quickshell bar
-   shows (clock + ≥1 workspace pill); `Mod+Return` opens alacritty; `Mod+Shift+E`
+   shows (clock + ≥1 workspace pill); `Mod+Return` opens kitty; `Mod+Shift+E`
    exits to a shell. QEMU (virtio-gpu) can confirm Hyprland reaches DRM + opens a
    Wayland socket, but the iris-only Mesa won't render the bar reliably there —
    the real GPU is authoritative.
