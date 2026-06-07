@@ -71,7 +71,7 @@ overlay step):
 - `home/writeonce/.config/quickshell/wo/shell.qml` — thin bar (workspaces/clock/volume),
   only standard Quickshell+Qt modules (no Kirigami/QtPositioning/Qt5Compat).
 - `etc/nix/nix.conf` — single-user Nix baseline (flakes + cache).
-- `etc/writeonce/desktop-packages` — the Tier-2 DE closure (`nixpkgs#hyprland`,
+- `etc/writeonce/desktop/flake.nix` — the Tier-2 DE closure (`nixpkgs#hyprland`,
   `quickshell`, `kitty`, `xdg-desktop-portal-hyprland`, `wl-clipboard`). Consumption
   only — no `*.nix` authored.
 - `home/writeonce/.bash_profile` — sources Nix profile, launches `wo-session` on tty1.
@@ -135,7 +135,7 @@ an account). Just network access to the cache is required.
 ### What remains (cannot be done in this environment)
 
 1. **Realize the desktop closure** — first graphical boot with network
-   (`wo-session` runs `nix profile install` from `desktop-packages`), or, once
+   (`wo-session` runs `nix profile install` from `desktop/flake.nix`), or, once
    Nix is on the workstation, pre-bake the closure into `/nix/store` at
    image-build (most robust; no first-boot network for the compositor). Pin the
    nixpkgs registry rev for reproducibility.

@@ -31,7 +31,7 @@ first-boot fragilities.
 ## Acceptance
 
 Per item: the feature works on the T450 without regressing first boot; the Nix desktop set
-stays declarative in `etc/writeonce/desktop-packages`; no `*.nix` authored in-repo.
+stays declarative in `etc/writeonce/desktop/flake.nix`; no `*.nix` authored in-repo.
 
 ## Risk
 

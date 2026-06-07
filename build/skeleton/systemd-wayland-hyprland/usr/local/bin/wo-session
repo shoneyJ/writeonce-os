@@ -2,10 +2,10 @@
 # /usr/local/bin/wo-session — WriteOnce Wayland (Hyprland) session launcher.
 #
 # Run (not exec'd) from ~/.bash_profile on tty1 after autologin. The compositor
-# + shell (Hyprland, Quickshell, terminal) are Tier-2 Nix packages — see
-# /etc/writeonce/desktop-packages. This script:
+# + shell (Hyprland, Quickshell, terminal) are Tier-2 Nix packages declared in
+# /etc/writeonce/desktop/flake.nix. This script:
 #   1. exports the Wayland/Qt session environment,
-#   2. realizes the desktop profile from Nix on first boot (needs network),
+#   2. realizes the desktop flake from Nix on first boot (needs network),
 #   3. exec's Hyprland.
 # On any failure it exits non-zero so ~/.bash_profile falls back to a shell
 # (never hangs the only console).
@@ -29,7 +29,7 @@ export WLR_NO_HARDWARE_CURSORS=1
 
 # ---- realize the desktop from Nix on first boot ----------------------------
 if ! command -v Hyprland >/dev/null 2>&1; then
-    if command -v nix >/dev/null 2>&1 && [ -r /etc/writeonce/desktop-packages ]; then
+    if command -v nix >/dev/null 2>&1 && [ -e /etc/writeonce/desktop/flake.nix ]; then
         echo "wo-session: first boot — installing the desktop from Nix (needs network)…"
         # Wait for a default route — iwd association + dhcpcd lease take a few
         # seconds, and multi-user.target does not guarantee network-online.
@@ -39,14 +39,12 @@ if ! command -v Hyprland >/dev/null 2>&1; then
         done
         ip route 2>/dev/null | grep -q '^default' \
             || echo "wo-session: no network yet — nix install may fail; check ethernet/Wi-Fi." >&2
-        while IFS= read -r pkg; do
-            case "$pkg" in ''|\#*) continue ;; esac
-            nix profile install "$pkg" \
-                || echo "wo-session: 'nix profile install $pkg' failed" >&2
-        done < /etc/writeonce/desktop-packages
+        # One declarative, pinned profile generation (see desktop/flake.nix).
+        nix profile install path:/etc/writeonce/desktop \
+            || echo "wo-session: 'nix profile install path:/etc/writeonce/desktop' failed" >&2
     else
         echo "wo-session: Nix is not bootstrapped yet (Phase 14) — cannot start Hyprland." >&2
-        echo "            Bootstrap Nix, then: nix profile install \$(grep -v '^#' /etc/writeonce/desktop-packages)" >&2
+        echo "            Bootstrap Nix, then: nix profile install path:/etc/writeonce/desktop" >&2
         exit 1
     fi
 fi

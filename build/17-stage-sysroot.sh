@@ -7,7 +7,7 @@
 #     wo-ctl (the per-Rust-crate boot-path binaries)
 #   - target/x86_64-unknown-uefi/release/writeonce-bootloader.efi
 #   - the Hyprland + Quickshell desktop is delivered via Nix at runtime
-#     (see /etc/writeonce/desktop-packages); its config rides in via the
+#     (see /etc/writeonce/desktop/flake.nix); its config rides in via the
 #     build/skeleton overlay below — nothing is staged from a DE build here.
 #   - build/skeleton/ overlay (/etc/*, /home/writeonce/* defaults:
 #     .config/hypr, .config/quickshell, /usr/local/bin/wo-session, /etc/nix)
@@ -23,7 +23,7 @@
 #   - Phase 0-8 built ($LFS/usr populated)
 #   - Kernel modules + firmware staged (04-kernel.sh, 01-fetch.sh)
 #   - Desktop (Hyprland + Quickshell): delivered via Nix at runtime, not staged
-#     here (see /etc/writeonce/desktop-packages + plan/phase-14-nix-packages.md)
+#     here (see /etc/writeonce/desktop/flake.nix + plan/phase-14-nix-packages.md)
 
 set -euo pipefail
 
@@ -141,7 +141,7 @@ echo
 echo "==== [3b/8] Desktop (Hyprland + Quickshell): via Nix at runtime"
 # The X11/i3 + i3More desktop was replaced by a Wayland desktop (Hyprland
 # compositor + Quickshell shell). Per the project scope these Tier-2 packages
-# come from Nix — see /etc/writeonce/desktop-packages + the wo-session launcher,
+# come from Nix — see /etc/writeonce/desktop/flake.nix + the wo-session launcher,
 # both staged by the build/skeleton overlay in step [4/8]. A Nix Hyprland
 # closure is self-contained (its own Mesa/Wayland/seatd), so there is nothing
 # to copy from a DE build at this stage. (Prerequisite: the Phase 14 Nix

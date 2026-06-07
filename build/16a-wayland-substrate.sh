@@ -3,7 +3,7 @@
 #
 # ┌─ PARKED (not on the active critical path) ────────────────────────────────┐
 # │ The desktop (Hyprland + Qt6 + Quickshell) is delivered via Nix — see       │
-# │ /etc/writeonce/desktop-packages + plan/phase-14-nix-packages.md. A Nix     │
+# │ /etc/writeonce/desktop/flake.nix + plan/phase-14-nix-packages.md. A Nix     │
 # │ Hyprland closure is self-contained (its own Mesa/wayland/seatd from        │
 # │ nixpkgs) and only needs the kernel's DRM, so this from-source substrate is │
 # │ NOT required for it. Retained as the from-source fallback; its packages    │

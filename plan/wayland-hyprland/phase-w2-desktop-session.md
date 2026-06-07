@@ -41,4 +41,4 @@ desktop config, launched on tty1 autologin — inert until the binaries exist (W
 
 - The thin `shell.qml` assumes the nixpkgs Quickshell build provides `Quickshell.Hyprland`
   + `Quickshell.Services.Pipewire` (it does). A very old nixpkgs pin could lack `quickshell`.
-- Terminal is `kitty` (from Nix); ensure it's in the desktop package set (W3 `desktop-packages`).
+- Terminal is `kitty` (from Nix); ensure it's in the desktop package set (W3 `desktop/flake.nix`).
