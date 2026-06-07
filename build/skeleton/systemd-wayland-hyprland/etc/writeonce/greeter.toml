@@ -1,0 +1,16 @@
+# /etc/writeonce/greeter.toml — WriteOnce login greeter (writeonce-greeter).
+# All keys are optional; see crates/writeonce-greeter/src/config.rs for the
+# per-field defaults. This file is a convenience override.
+
+welcome = "WriteOnce"
+
+# Must match a file in /etc/pam.d/. Keep in sync with the shipped
+# etc/pam.d/writeonce-greeter — a mismatch is a local lockout.
+pam-service = "writeonce-greeter"
+
+# Seed default session (by display Name) until one is remembered. Empty =
+# first installed compositor (alphabetical), else "Shell (bash)".
+default-session = ""
+
+# Root-owned file remembering the last-chosen session (not written into $HOME).
+state-path = "/var/lib/writeonce-greeter/last"

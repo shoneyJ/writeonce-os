@@ -7,12 +7,11 @@
 
   Rust + kernel boot path. No reinvention beyond that.
 
-  Type your username + password at the prompt.
-  After login, the Hyprland desktop starts automatically.
+  Sign in at the greeter, then pick a session (the ⚙ list):
+    • a Wayland compositor you installed via Nix (sway / hyprland / …)
+    • Shell (bash) — a plain console
 
-  Useful keybindings (Hyprland):
-    Mod+Return         kitty (terminal)
-    Mod+Q              close window
-    Mod+Shift+E        log out
-    Mod+F              fullscreen
+  No desktop yet?  Log into Shell, then install one, e.g.:
+    nix profile add path:/etc/writeonce/sessions/sway   (log out, then pick Sway)
+  Remote:  ssh writeonce@writeonce.local   (after `sudo wo-sshd-setup`)
 

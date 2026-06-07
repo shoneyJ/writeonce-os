@@ -31,11 +31,12 @@ Quickshell desktop on the T450 — fixing first-boot issues as they surface.
 3. **Install** — attach the target disk, `just install /dev/sdX` (= `check-staging` +
    `install.sh`); answer the Wi-Fi prompt (or skip for ethernet). Default login: `writeonce`.
 4. **First boot (needs network)** — EFI-stub kernel → systemd → `writeonce-nix-init`
-   (registers Nix) + `avahi-daemon` (advertises `writeonce.local`) → tty1 autologin to a
-   **console** (no desktop is launched — WriteOnce is compositor-agnostic). Drive it
-   remotely: `sudo wo-sshd-setup` (installs OpenSSH via Nix + enables sshd) → from the
-   workstation `ssh writeonce@writeonce.local` → `nix profile add …#sway` (or
-   `#hyprland`/`#wayfire`) → `exec sway`. First Nix fetch is multi-hundred-MB; later cached.
+   (registers Nix) + `avahi-daemon` (advertises `writeonce.local`) → tty1 **greeter**
+   (`writeonce-greeter`): sign in (password) and pick a session — **Shell (bash)** or an
+   installed Wayland compositor. A fresh boot offers only Shell; install one via
+   `nix profile add path:/etc/writeonce/sessions/sway` (or `sudo wo-sshd-setup` then drive
+   it over SSH), log out, and the session appears in the ⚙ list. tty2–6 give a password
+   getty. First Nix fetch is multi-hundred-MB; later cached.
    See [`../../docs/learning/ssh-and-byo-compositor.md`](../../docs/learning/ssh-and-byo-compositor.md).
 
 ## Acceptance / verification
@@ -44,13 +45,17 @@ Quickshell desktop on the T450 — fixing first-boot issues as they surface.
   resolves from the workstation (mDNS / avahi).
 - `sudo wo-sshd-setup` → `systemctl status sshd` active → `ssh writeonce@writeonce.local`
   logs in (key provisioned at install, or password).
-- Boot lands at a console (no auto-compositor). A user-installed compositor comes up:
-  `nix profile add …#sway` → `exec sway` → `echo $WAYLAND_DISPLAY` non-empty.
+- Boot lands at the **greeter** (password required). The Shell session works before any
+  compositor is installed; after `nix profile add path:/etc/writeonce/sessions/sway`,
+  "Sway" appears in the ⚙ list and launches → `echo $WAYLAND_DISPLAY` non-empty. tty2–6 →
+  password getty → bash.
 
-## Debugging (boots to a console by design, never hangs)
+## Debugging (boots to the greeter by design, never hangs)
 
-- `journalctl -b -u writeonce-nix-init` (Nix registration) / `-u iwd -u dhcpcd` (network) /
-  `-u avahi-daemon` (mDNS) / `-u sshd` (after `wo-sshd-setup`).
+- `journalctl -b -u writeonce-greeter` (greeter/session) / `-u writeonce-nix-init` (Nix) /
+  `-u iwd -u dhcpcd` (network) / `-u avahi-daemon` (mDNS) / `-u sshd` (after `wo-sshd-setup`).
+- Greeter misbehaving? Ctrl+Alt+F2 → password getty → bash; or SSH in. Pick "Shell (bash)"
+  at the greeter to debug a failing compositor (`loginctl`, the compositor's own logs).
 - `nix profile add github:NixOS/nixpkgs/nixos-unstable#sway` to reproduce a package-install
   error directly (full flakeref — the bare `nixpkgs` alias won't resolve).
 - Compositor logs are wherever your chosen compositor writes them. `just pull-logs /dev/sdX`

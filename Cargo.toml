@@ -13,6 +13,7 @@ members  = [
     "crates/writeonce-pid1",
     "crates/writeonce-svc",
     "crates/writeonce-login",
+    "crates/writeonce-greeter",
     "crates/writeonce-logind",
     "crates/writeonce-session-create",
     "crates/writeonce-initramfs",

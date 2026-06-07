@@ -2036,6 +2036,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "writeonce-greeter"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "serde",
+ "toml",
+ "writeonce-login",
+]
+
+[[package]]
 name = "writeonce-initramfs"
 version = "0.1.0"
 dependencies = [

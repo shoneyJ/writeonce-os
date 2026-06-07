@@ -1,0 +1,28 @@
+# WriteOnce greeter — the password-gated login + session chooser on tty1.
+# Replaces the old agetty autologin (Conflicts=getty@tty1). It renders a text
+# UI, authenticates via PAM (pam_systemd → logind session), then launches the
+# chosen Wayland compositor (or a login shell) as the user. tty2–tty6 still get
+# a normal password getty via logind autovt (Ctrl+Alt+F2…). Restart=always so a
+# crashed compositor/session always returns to the greeter. The greeter itself
+# needs no DRM/seat — it only writes text to the VT; the compositor takes DRM
+# master via logind once it starts.
+[Unit]
+Description=WriteOnce login greeter (tty1)
+After=systemd-user-sessions.service writeonce-nix-init.service getty@tty1.service
+Conflicts=getty@tty1.service
+ConditionPathExists=/dev/tty0
+
+[Service]
+Type=idle
+ExecStart=/usr/sbin/writeonce-greeter --tty /dev/tty1 --config /etc/writeonce/greeter.toml
+Restart=always
+RestartSec=1
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty
+StandardOutput=tty
+
+[Install]
+WantedBy=multi-user.target

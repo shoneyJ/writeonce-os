@@ -1,0 +1,22 @@
+[package]
+name        = "writeonce-greeter"
+version     = "0.1.0"
+description = "WriteOnce OS — TUI login greeter + session chooser (tty1)."
+
+edition      .workspace = true
+license      .workspace = true
+authors      .workspace = true
+rust-version .workspace = true
+
+# Like writeonce-login, this is a glibc-dynamic component: it links libpam
+# (PAM dlopens its .so modules at runtime). Build inside the wo-builder
+# container (libpam0g-dev), default target — NOT static-musl:
+#     ./build/in-container.sh cargo build -p writeonce-greeter --release
+# Runtime deps on target: libpam0g + /etc/pam.d/writeonce-greeter + a login
+# shell; the chosen compositor comes from the user's Nix profile.
+
+[dependencies]
+libc           .workspace = true
+serde          .workspace = true
+toml           .workspace = true
+writeonce-login = { path = "../writeonce-login" }

@@ -6,4 +6,5 @@
 
 pub mod config;
 pub mod pam;
+pub mod session;
 pub mod term;

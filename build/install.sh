@@ -95,7 +95,14 @@ if [[ -n "$HASH" ]] && grep -q '^root:' "$MNT/etc/shadow"; then
     done
     echo "    passwords set (change after first boot: passwd)"
 else
-    echo "    WARN: could not hash/set passwords; accounts stay locked (autologin still works)."
+    echo "    FATAL: could not hash/set the password (need 'openssl' or 'python3' on the" >&2
+    echo "           install host). WriteOnce boots to a password-gated greeter on tty1 —" >&2
+    echo "           with no password the account is locked and local login is impossible." >&2
+    echo "           Install openssl or python3 (or set WRITEONCE_PASSWORD) and re-run." >&2
+    umount "$MNT/boot/efi" 2>/dev/null || true
+    umount "$MNT" 2>/dev/null || true
+    rmdir "$MNT" 2>/dev/null || true
+    exit 1
 fi
 
 echo "==== [5b/6] Wi-Fi for first-boot internet (optional) ===="

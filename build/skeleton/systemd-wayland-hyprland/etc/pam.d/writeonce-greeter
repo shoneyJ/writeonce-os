@@ -1,0 +1,11 @@
+# PAM stack for the WriteOnce greeter (writeonce-greeter). Mirror of
+# /etc/pam.d/login: pam_unix for auth/account/session, plus pam_systemd
+# (session) so logind registers the session — XDG_RUNTIME_DIR, seat0, VT —
+# which the chosen Wayland compositor needs to take DRM master. pam_systemd is
+# `optional` so a logind hiccup never blocks login (you can still pick the
+# Shell session and debug). The service name MUST match greeter.toml's
+# `pam-service` — a mismatch makes PAM fall back to `other` (deny) = lockout.
+auth      required   pam_unix.so
+account   required   pam_unix.so
+session   required   pam_unix.so
+session   optional   pam_systemd.so

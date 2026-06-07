@@ -1,0 +1,32 @@
+#!/bin/sh
+# wo-install-session <name> — install a WriteOnce session template into your
+# Nix profile, so it appears at the greeter. Run as the desktop user (e.g. from
+# the greeter's "Shell (bash)" session). <name> is a directory under
+# /etc/writeonce/sessions/ (sway, hyprland, …). After it finishes, log out and
+# select the session at the greeter.
+#
+# This is just convenience around:
+#     nix profile add path:/etc/writeonce/sessions/<name>
+# You can also install any nixpkgs compositor directly, e.g.:
+#     nix profile add github:NixOS/nixpkgs/nixos-unstable#sway
+set -eu
+
+name="${1:-}"
+base=/etc/writeonce/sessions
+dir="$base/$name"
+
+if [ -z "$name" ] || [ ! -e "$dir/flake.nix" ]; then
+    avail="$(ls "$base" 2>/dev/null | tr '\n' ' ')"
+    echo "usage: wo-install-session <name>   (templates: ${avail:-none})" >&2
+    exit 2
+fi
+
+command -v nix >/dev/null 2>&1 || {
+    echo "wo-install-session: 'nix' is not on PATH — bootstrap Nix first." >&2
+    exit 1
+}
+
+echo "wo-install-session: installing the '$name' session from $dir …"
+echo "  (downloads a closure on first use; needs network)"
+nix profile add "path:$dir"
+echo "wo-install-session: done. Log out, then pick '$name' at the greeter."

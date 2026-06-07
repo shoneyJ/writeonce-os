@@ -56,6 +56,11 @@ const PAM_TEXT_INFO:       c_int = 4;
 
 pub const PAM_USER: c_int = 2;
 
+// PAM item types (for pam_set_item / pam_get_item).
+pub const PAM_TTY:   c_int = 3;
+pub const PAM_RHOST: c_int = 4;
+pub const PAM_RUSER: c_int = 8;
+
 pub const PAM_SILENT:           c_int = 0x8000;
 pub const PAM_ESTABLISH_CRED:   c_int = 0x0002;
 pub const PAM_DELETE_CRED:      c_int = 0x0004;
@@ -89,6 +94,20 @@ extern "C" {
         item_type: c_int,
         item: *mut *const c_void,
     ) -> c_int;
+
+    fn pam_set_item(
+        pamh: *mut pam_handle,
+        item_type: c_int,
+        item: *const c_void,
+    ) -> c_int;
+
+    // Set a "NAME=value" pair in the PAM environment (read by pam_systemd at
+    // pam_open_session to classify the logind session).
+    fn pam_putenv(pamh: *mut pam_handle, name_value: *const libc::c_char) -> c_int;
+
+    // Returns a malloc'd, NULL-terminated array of malloc'd "NAME=value"
+    // strings (the session env logind/pam_systemd produced). Caller frees.
+    fn pam_getenvlist(pamh: *mut pam_handle) -> *mut *mut libc::c_char;
 
     fn pam_strerror(pamh: *const pam_handle, errnum: c_int) -> *const libc::c_char;
 }
@@ -263,6 +282,60 @@ impl Session {
             return Err(PamError::Generic { code: rc, message: format!("{name}: {}", strerror(self.pamh, rc)) });
         }
         Ok(())
+    }
+
+    /// Set a PAM item (e.g. `PAM_TTY` = `"tty1"` — the bare name, NOT
+    /// `/dev/tty1`). Must be set before `open_session` so pam_systemd can
+    /// derive the VT/seat for the logind session.
+    pub fn set_item(&mut self, item_type: c_int, value: &str) -> Result<(), PamError> {
+        let c = CString::new(value)
+            .map_err(|_| PamError::Generic { code: -1, message: "item has NUL".into() })?;
+        let rc = unsafe { pam_set_item(self.pamh, item_type, c.as_ptr() as *const c_void) };
+        if rc != PAM_SUCCESS {
+            return Err(PamError::Generic { code: rc, message: strerror(self.pamh, rc) });
+        }
+        Ok(())
+    }
+
+    /// Put a `NAME=value` pair in the PAM environment. Set the `XDG_SEAT` /
+    /// `XDG_VTNR` / `XDG_SESSION_TYPE` / `XDG_SESSION_CLASS` hints *before*
+    /// `open_session` so logind classifies the session correctly.
+    pub fn putenv(&mut self, name_value: &str) -> Result<(), PamError> {
+        let c = CString::new(name_value)
+            .map_err(|_| PamError::Generic { code: -1, message: "env has NUL".into() })?;
+        let rc = unsafe { pam_putenv(self.pamh, c.as_ptr()) };
+        if rc != PAM_SUCCESS {
+            return Err(PamError::Generic { code: rc, message: strerror(self.pamh, rc) });
+        }
+        Ok(())
+    }
+
+    /// Harvest the PAM environment after `open_session` — this is where
+    /// pam_systemd exposes `XDG_RUNTIME_DIR`, `XDG_SESSION_ID`, and
+    /// `DBUS_SESSION_BUS_ADDRESS` for the new logind session. The returned
+    /// pairs must be threaded into the child's environment.
+    pub fn getenvlist(&self) -> Vec<(String, String)> {
+        let mut out = Vec::new();
+        let arr = unsafe { pam_getenvlist(self.pamh) };
+        if arr.is_null() {
+            return out;
+        }
+        let mut i: isize = 0;
+        loop {
+            let entry = unsafe { *arr.offset(i) };
+            if entry.is_null() {
+                break;
+            }
+            if let Ok(s) = unsafe { CStr::from_ptr(entry) }.to_str() {
+                if let Some((k, v)) = s.split_once('=') {
+                    out.push((k.to_string(), v.to_string()));
+                }
+            }
+            unsafe { libc::free(entry as *mut c_void) };
+            i += 1;
+        }
+        unsafe { libc::free(arr as *mut c_void) };
+        out
     }
 
     /// Get the authenticated username PAM settled on. Returns `None` if

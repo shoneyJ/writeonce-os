@@ -118,15 +118,30 @@ if [[ -e "$STAGING/usr/bin/bash" && ! -e "$STAGING/usr/bin/sh" ]]; then
 fi
 ln -sf usr/lib  "$STAGING/lib64"
 
-# ---- 3. (with-systmed branch) NO Rust boot-path binaries -------------------
-# This branch uses systemd (built into $LFS/usr by 16-systemd.sh) as PID 1 +
-# service manager + logind + udev, and shadow for login. The custom Rust init
-# crates (writeonce-pid1/svc/logind/login/session-create) are NOT built or
-# staged here — they live on `master`. systemd's /sbin/init symlink + its units
-# are already under $LFS/usr (copied by step 2 above).
+# ---- 3. (systemd branch) the login/session manager ------------------------
+# This branch uses systemd as PID 1 + service manager + logind + udev (built
+# into $LFS/usr by 16-systemd.sh); the Rust boot-path crates (pid1/svc/logind/
+# session-create) live on `master` and are NOT staged here. The EXCEPTION is
+# writeonce-greeter — the password-gated login + Wayland session chooser that
+# replaces the old getty autologin on tty1 (docs/learning/login-greeter-and-
+# sessions.md). Like writeonce-login it is glibc-dynamic (links libpam), so it
+# builds to target/release/ (default target), NOT the musl path; its libpam
+# runtime dep is already satisfied by the lib64→usr/lib merge above.
 echo
-echo "==== [3a/8] Rust crate binaries: skipped (systemd branch — none staged)"
+echo "==== [3a/8] Login/session manager (writeonce-greeter)"
 mkdir -p "$STAGING/sbin" "$STAGING/usr/sbin" "$STAGING/usr/bin"
+
+install_if_present() {
+    local src="$1" dst="$2"
+    if [[ -f "$src" ]]; then
+        install -Dm755 "$src" "$dst"
+        echo "    $src → $dst"
+    else
+        echo "    skip $src (not built — ./build/in-container.sh cargo build -p writeonce-greeter --release)"
+    fi
+}
+install_if_present target/release/writeonce-greeter "$STAGING/usr/sbin/writeonce-greeter"
+
 # Ensure /sbin/init resolves (systemd installs /usr/lib/systemd/systemd; some
 # firmware/GRUB configs default init=/sbin/init). Create the symlink if the
 # systemd build didn't already. Only for the systemd init flavor.
@@ -188,6 +203,32 @@ chmod 700 "$STAGING/home/writeonce/.config" 2>/dev/null || true
 # step prompts for passwords or accepts pre-set ones).
 cp "$STAGING/etc/shadow.template" "$STAGING/etc/shadow"
 chmod 640 "$STAGING/etc/shadow"
+
+# ---- 4a. greeter lockout guard ---------------------------------------------
+# The greeter owns tty1 and password-gates local login. Shipping its unit
+# without the binary or its PAM file (or while a tty1 getty still exists) would
+# brick local login. Fail the stage now rather than discover it on the target.
+GREETER_UNIT="$STAGING/etc/systemd/system/writeonce-greeter.service"
+if [[ -e "$GREETER_UNIT" ]]; then
+    echo
+    echo "==== [4a/8] Greeter lockout guard"
+    guard_err=0
+    [[ -x "$STAGING/usr/sbin/writeonce-greeter" ]] || {
+        echo "  FATAL: writeonce-greeter.service staged but /usr/sbin/writeonce-greeter is missing." >&2
+        echo "         Build it: ./build/in-container.sh cargo build -p writeonce-greeter --release" >&2
+        guard_err=1; }
+    [[ -e "$STAGING/etc/pam.d/writeonce-greeter" ]] || {
+        echo "  FATAL: /etc/pam.d/writeonce-greeter missing — PAM would fall back to 'other' (deny)." >&2
+        guard_err=1; }
+    [[ -e "$STAGING/etc/systemd/system/multi-user.target.wants/writeonce-greeter.service" ]] || {
+        echo "  FATAL: greeter not enabled (multi-user.target.wants/writeonce-greeter.service missing)." >&2
+        guard_err=1; }
+    [[ ! -e "$STAGING/etc/systemd/system/getty.target.wants/getty@tty1.service" ]] || {
+        echo "  FATAL: getty@tty1 is still enabled — it would fight the greeter for tty1." >&2
+        guard_err=1; }
+    [[ "$guard_err" -eq 0 ]] || exit 1
+    echo "    greeter binary + PAM file + enablement present; tty1 getty absent — OK"
+fi
 
 # ---- 5. service units: provided by systemd itself --------------------------
 # (with-systmed branch) No writeonce-svc *.service.toml units, and no
