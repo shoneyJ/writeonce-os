@@ -63,6 +63,19 @@ Phase 12 for substituter network access.
 
 ---
 
+## Wayland / Hyprland flavor (`wayland-hyprland`)
+
+A flavor off `with-systmed` that replaces the X11/i3 desktop with **Hyprland + Quickshell
+(Qt/QML)**, delivered via **Nix**. Same systemd boot path + kernel 6.18.34; selected at
+build time via the flavor profile (`build/flavors/systemd-wayland-hyprland.conf`). It
+supersedes Phase 8/9 (desktop) and realises Phase 14 (Nix) at first boot.
+
+Phase-by-phase plan (W1 substrate decision → W6 hardening) in
+[`wayland-hyprland/00-overview.md`](wayland-hyprland/00-overview.md); architecture +
+decision log in [`../docs/learning/phase-8-wayland-hyprland-quickshell.md`](../docs/learning/phase-8-wayland-hyprland-quickshell.md).
+
+---
+
 ## Cross-cutting tracks (parallel to the phases)
 
 - **Track L — Learning log.** `docs/learning/<phase>-<topic>.md` per major concept (PID 1, cgroup v2, EFI handover, kernel Rust, etc.). The user's primary goal is *learning*; this is the evidence.
